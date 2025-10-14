@@ -1,7 +1,7 @@
 name: MB Quant Signal
 on:
   schedule:
-    - cron: "00 12 * * 1-5"  # 평일 21:00 KST
+    - cron: "25 13 * * 1-5"  # 평일 22:25 KST
   workflow_dispatch:        # 수동 실행도 가능
 
 jobs:
