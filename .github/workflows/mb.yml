@@ -1,0 +1,25 @@
+name: MB Quant Signal
+on:
+  schedule:
+    - cron: "25 13 * * 1-5"  # 평일 22:25 KST
+  workflow_dispatch:        # 수동 실행도 가능
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run MB script
+        env:
+          EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          EMAIL_RECIPIENTS: ${{ secrets.EMAIL_RECIPIENTS }}
+        run: python mb.py
