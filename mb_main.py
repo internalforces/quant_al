@@ -23,13 +23,13 @@ from module.mail import send_email
 # -----------------------------
 # 설정값
 # -----------------------------
-TICKER = "SQQQ"               # 분석할 티커
+TICKER = "APPL"               # 분석할 티커
 ROLLING_WINDOW = 15                 # MB스케일(표준편차) 산출 구간
 LOWER_Q = 0.20                      # 하위 20% → 매수 시그널
 UPPER_Q = 0.90                      # 상위 10% → 매도 시그널
 STOP_LOSS = -0.015                  # -1.5% 손절
 TAKE_PROFIT = 0.05                  # +5% 익절
-BACK_YEARS = 10                      # 2년 백데스트
+BACK_YEARS = 2                      # 2년 백데스트
 
 # -----------------------------
 # 환경 변수 로드 (.env)
