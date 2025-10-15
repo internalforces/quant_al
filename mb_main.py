@@ -23,7 +23,7 @@ from module.mail import send_email
 # -----------------------------
 # 설정값
 # -----------------------------
-TICKER = "APPL"               # 분석할 티커
+TICKER = "AAPL"               # 분석할 티커
 ROLLING_WINDOW = 15                 # MB스케일(표준편차) 산출 구간
 LOWER_Q = 0.20                      # 하위 20% → 매수 시그널
 UPPER_Q = 0.90                      # 상위 10% → 매도 시그널
