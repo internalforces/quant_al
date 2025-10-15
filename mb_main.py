@@ -48,7 +48,7 @@ from module.mail import send_email
 	9.	005490.KS — 포스코홀딩스 (POSCO Holdings)
 	10.	035720.KQ — 카카오 (Kakao Corp)
 """
-TICKER = "000270.KS"               # 분석할 티커
+TICKER = "NVDA"               # 분석할 티커
 ROLLING_WINDOW = 15                 # MB스케일(표준편차) 산출 구간
 LOWER_Q = 0.20                      # 하위 20% → 매수 시그널
 UPPER_Q = 0.90                      # 상위 10% → 매도 시그널
