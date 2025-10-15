@@ -23,7 +23,32 @@ from module.mail import send_email
 # -----------------------------
 # 설정값
 # -----------------------------
-TICKER = "AAPL"               # 분석할 티커
+"""
+미국 주식 (예시: NASDAQ 대형주)
+    1.	NVDA — NVIDIA Corporation  ￼
+	2.	MSFT — Microsoft Corporation  ￼
+	3.	AAPL — Apple Inc.  ￼
+	4.	GOOGL / GOOG — Alphabet Inc.  ￼
+	5.	AMZN — Amazon.com, Inc.  ￼
+	6.	META (Facebook → Meta Platforms)
+	7.	TSLA — Tesla, Inc.
+	8.	BRK.B / BRK.A — Berkshire Hathaway
+	9.	ORCL — Oracle
+	10.	AVGO — Broadcom
+	
+국내 주식 (예시: KOSPI 대형주)
+    1.	005930.KS — 삼성전자 (Samsung Electronics)
+	2.	000660.KS — SK 하이닉스 (SK Hynix)
+	3.	373220.KS — LG에너지솔루션 (LG Energy Solution)
+	4.	005380.KS — 현대차 (Hyundai Motor)
+	5.	207940.KS — 삼성바이오로직스 (Samsung Biologics)
+	6.	000270.KS — 기아 (Kia Corp)
+	7.	068270.KS — 셀트리온 (Celltrion)
+	8.	051910.KS — LG화학 (LG Chem)
+	9.	005490.KS — 포스코홀딩스 (POSCO Holdings)
+	10.	035720.KQ — 카카오 (Kakao Corp)
+"""
+TICKER = "000270.KS"               # 분석할 티커
 ROLLING_WINDOW = 15                 # MB스케일(표준편차) 산출 구간
 LOWER_Q = 0.20                      # 하위 20% → 매수 시그널
 UPPER_Q = 0.90                      # 상위 10% → 매도 시그널
