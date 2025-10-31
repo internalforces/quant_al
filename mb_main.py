@@ -50,7 +50,7 @@ from module.mail import send_email
 """
 TICKERS = [
     "NVDA","AAPL","GOOGL","AMZN","TSLA",
-    "005930.KS","000660.KS","005380.KS","000270.KS","000270.KS"
+    "005930.KS","000660.KS","005380.KS","000270.KS","005490.KS"
 ][:10]  # 최대 10개
 ROLLING_WINDOW = 15
 LOWER_Q, UPPER_Q = 0.20, 0.90
