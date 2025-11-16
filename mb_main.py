@@ -129,6 +129,8 @@ for TICKER in TICKERS:
 
         # MB 분포 기반 시그널
         scale = df['return'].rolling(ROLLING_WINDOW).std()
+        # scale이 0이 되는 것을 방지 (inf/NaN 방지)
+        scale = scale.clip(lower=1e-8)
         df['mb_pdf'] = maxwell.pdf(np.abs(df['return']), scale=scale)
 
         lower_thr = df['mb_pdf'].rolling(ROLLING_WINDOW).quantile(LOWER_Q)
@@ -181,6 +183,7 @@ for TICKER in TICKERS:
             f"신호: {last_sig}, 포지션: {last_pos}\n"
             f"전략 누적: {df['cumulative_strategy'].iloc[-1]:.3f}, "
             f"시장 누적: {df['cumulative_market'].iloc[-1]:.3f}\n"
+            
         )
 
         body_each = (
