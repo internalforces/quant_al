@@ -11,7 +11,7 @@ const darkLayout = {
     zerolinecolor: '#2a3545',
   },
   yaxis: {
-    title: 'Cumulative Return',
+    title: 'Cumulative Return(누적 수익률)',
     gridcolor: '#2a3545',
     linecolor: '#2a3545',
     zerolinecolor: '#2a3545',
@@ -35,7 +35,7 @@ export default function ReturnChart({ chartData }) {
               y: cumulative_strategy,
               type: 'scatter',
               mode: 'lines',
-              name: 'MB Strategy',
+              name: 'MB Strategy(MB 전략)',
               line: { color: '#00c896', width: 2 },
             },
             {
@@ -43,7 +43,7 @@ export default function ReturnChart({ chartData }) {
               y: cumulative_market,
               type: 'scatter',
               mode: 'lines',
-              name: 'Buy & Hold',
+              name: 'Buy & Hold(매수 후 보유)',
               line: { color: '#f0b90b', width: 2 },
             },
           ]}
