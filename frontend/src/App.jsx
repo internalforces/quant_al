@@ -27,7 +27,7 @@ export default function App() {
     <div className="app">
       <header>
         <h1>MB Quant</h1>
-        <p className="subtitle">Maxwell-Boltzmann Distribution Stock Analysis</p>
+        <span className="subtitle">Maxwell-Boltzmann Distribution Analysis</span>
       </header>
 
       <SearchBar onAnalyze={handleAnalyze} loading={loading} />
