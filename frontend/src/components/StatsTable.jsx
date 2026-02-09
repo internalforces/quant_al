@@ -19,7 +19,7 @@ const metrics = [
 export default function StatsTable({ stats }) {
   return (
     <div className="panel">
-      <div className="panel-header">Performance Metrics</div>
+      <div className="panel-header">Performance Metrics(성과 지표)</div>
       <div className="panel-body">
         <div className="metrics-grid">
           {metrics.map((m) => (

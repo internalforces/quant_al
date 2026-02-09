@@ -11,7 +11,7 @@ const darkLayout = {
     zerolinecolor: '#2a3545',
   },
   yaxis: {
-    title: 'Cumulative Return(누적 수익률)',
+    title: 'Cumulative Return',
     gridcolor: '#2a3545',
     linecolor: '#2a3545',
     zerolinecolor: '#2a3545',
@@ -26,7 +26,7 @@ export default function ReturnChart({ chartData }) {
 
   return (
     <div className="panel chart-panel">
-      <div className="panel-header">Cumulative Returns</div>
+      <div className="panel-header">Cumulative Returns(누적 수익률)</div>
       <div className="panel-body">
         <Plot
           data={[
