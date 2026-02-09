@@ -6,22 +6,25 @@ import ReturnChart from './ReturnChart';
 export default function AnalysisResult({ data }) {
   return (
     <div className="analysis-result">
-      <h2>
-        {data.ticker} — {data.company}
-      </h2>
-      <p className="period">
-        Period: {data.period_start} ~ {data.period_end}
-      </p>
+      <div className="result-header">
+        <h2>
+          {data.ticker} — {data.company}
+        </h2>
+        <p className="period">
+          {data.period_start} ~ {data.period_end}
+        </p>
+      </div>
 
-      <SignalCard
-        lastSignal={data.last_signal}
-        lastPosition={data.last_position}
-        latestDate={data.latest_date}
-      />
+      <div className="dashboard-top">
+        <SignalCard
+          lastSignal={data.last_signal}
+          lastPosition={data.last_position}
+          latestDate={data.latest_date}
+        />
+        <StatsTable stats={data.stats} />
+      </div>
 
-      <StatsTable stats={data.stats} />
-
-      <div className="charts">
+      <div className="dashboard-charts">
         <PriceChart chartData={data.chart_data} />
         <ReturnChart chartData={data.chart_data} />
       </div>
