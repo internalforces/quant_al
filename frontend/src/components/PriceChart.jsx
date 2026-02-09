@@ -38,7 +38,7 @@ export default function PriceChart({ chartData }) {
 
   return (
     <div className="panel chart-panel">
-      <div className="panel-header">Price & Signals</div>
+      <div className="panel-header">Price & Signals(가격 & 신호)</div>
       <div className="panel-body">
         <Plot
           data={[
