@@ -38,6 +38,37 @@ header h1 {
   font-size: 0.85rem;
 }
 
+/* Nav Tabs */
+.nav-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #2a3545;
+  padding-bottom: 0;
+}
+
+.nav-tab {
+  padding: 10px 24px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #8892a0;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+  margin-bottom: -1px;
+}
+
+.nav-tab:hover {
+  color: #e0e6ed;
+}
+
+.nav-tab.active {
+  color: #f0b90b;
+  border-bottom-color: #f0b90b;
+}
+
 /* Search Bar */
 .search-bar {
   position: relative;
@@ -354,5 +385,109 @@ header h1 {
 
   .signal-info {
     text-align: center;
+  }
+}
+
+/* Stock Price Card */
+.price-card {
+  max-width: 560px;
+  margin: 0 auto;
+  animation: fadeIn 0.3s ease;
+}
+
+.price-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.price-company {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #e0e6ed;
+}
+
+.price-ticker {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #f0b90b;
+}
+
+.price-display {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.price-current {
+  font-size: 2.4rem;
+  font-weight: 800;
+  font-family: 'SF Mono', 'Consolas', 'Menlo', monospace;
+  color: #e0e6ed;
+}
+
+.price-currency {
+  font-size: 0.9rem;
+  color: #8892a0;
+  font-weight: 600;
+}
+
+.price-change {
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: 'SF Mono', 'Consolas', 'Menlo', monospace;
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+
+.price-change.positive {
+  color: #00c896;
+}
+
+.price-change.negative {
+  color: #ff4757;
+}
+
+.price-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.price-detail {
+  background: #131d29;
+  border: 1px solid #2a3545;
+  border-radius: 6px;
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.price-detail-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #8892a0;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.price-detail-value {
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: 'SF Mono', 'Consolas', 'Menlo', monospace;
+  color: #e0e6ed;
+}
+
+@media (max-width: 640px) {
+  .price-details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .price-current {
+    font-size: 1.8rem;
   }
 }

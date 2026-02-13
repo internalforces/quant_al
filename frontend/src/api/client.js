@@ -11,3 +11,8 @@ export async function analyzeTicker(ticker) {
   const { data } = await api.get(`/analyze/${encodeURIComponent(ticker)}`);
   return data;
 }
+
+export async function fetchStockPrice(ticker) {
+  const { data } = await api.get(`/price/${encodeURIComponent(ticker)}`);
+  return data;
+}

@@ -43,3 +43,16 @@ class TickerSearchResult(BaseModel):
 
 class TickerSearchResponse(BaseModel):
     results: List[TickerSearchResult]
+
+
+class StockPriceResponse(BaseModel):
+    ticker: str
+    company: str
+    current_price: Optional[float]
+    previous_close: Optional[float]
+    open: Optional[float]
+    day_high: Optional[float]
+    day_low: Optional[float]
+    change: Optional[float]
+    change_percent: Optional[float]
+    currency: str
