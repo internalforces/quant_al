@@ -3,8 +3,9 @@ from functools import partial
 
 from fastapi import APIRouter, HTTPException, Query
 
-from backend.schemas.models import AnalysisResponse, TickerSearchResponse
+from backend.schemas.models import AnalysisResponse, StockPriceResponse, TickerSearchResponse
 from backend.services.analysis import analyze_ticker
+from backend.services.price import get_stock_price
 from backend.services.ticker_search import search_tickers
 
 router = APIRouter(prefix="/api")
@@ -22,6 +23,18 @@ async def search(q: str = Query(..., min_length=1)):
         return TickerSearchResponse(results=results)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Search failed: {e}")
+
+
+@router.get("/price/{ticker}", response_model=StockPriceResponse)
+async def price(ticker: str):
+    loop = asyncio.get_event_loop()
+    try:
+        result = await loop.run_in_executor(None, partial(get_stock_price, ticker))
+        return StockPriceResponse(**result)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Price fetch failed: {e}")
 
 
 @router.get("/analyze/{ticker}", response_model=AnalysisResponse)
