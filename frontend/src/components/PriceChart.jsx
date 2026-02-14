@@ -5,13 +5,13 @@ const darkLayout = {
   plot_bgcolor: '#131d29',
   font: { color: '#8892a0', size: 11 },
   xaxis: {
-    title: 'Date',
+    title: 'Date (일자)',
     gridcolor: '#2a3545',
     linecolor: '#2a3545',
     zerolinecolor: '#2a3545',
   },
   yaxis: {
-    title: 'Price',
+    title: 'Price (가격)',
     gridcolor: '#2a3545',
     linecolor: '#2a3545',
     zerolinecolor: '#2a3545',
@@ -47,7 +47,7 @@ export default function PriceChart({ chartData }) {
               y: close,
               type: 'scatter',
               mode: 'lines',
-              name: 'Close Price',
+              name: 'Close Price (종가)',
               line: { color: '#3b82f6', width: 1.5 },
             },
             {
@@ -55,7 +55,7 @@ export default function PriceChart({ chartData }) {
               y: buyPrices,
               type: 'scatter',
               mode: 'markers',
-              name: 'Buy Signal',
+              name: 'Buy Signal (매수 신호)',
               marker: { symbol: 'triangle-up', size: 10, color: '#00c896' },
             },
             {
@@ -63,7 +63,7 @@ export default function PriceChart({ chartData }) {
               y: sellPrices,
               type: 'scatter',
               mode: 'markers',
-              name: 'Sell Signal',
+              name: 'Sell Signal (매도 신호)',
               marker: { symbol: 'triangle-down', size: 10, color: '#ff4757' },
             },
           ]}
