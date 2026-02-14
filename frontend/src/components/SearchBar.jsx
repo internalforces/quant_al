@@ -62,11 +62,11 @@ export default function SearchBar({ onAnalyze, loading }) {
         value={query}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        placeholder="Search ticker (e.g. AAPL, 005930.KS)"
+        placeholder="Search ticker (티커 검색, 예: AAPL, 005930.KS)"
         disabled={loading}
       />
       <button onClick={() => query.trim() && onAnalyze(query.trim())} disabled={loading || !query.trim()}>
-        {loading ? 'Analyzing...' : 'Analyze'}
+        {loading ? 'Analyzing... (분석 중...)' : 'Analyze (분석)'}
       </button>
       {showDropdown && (
         <ul className="suggestions">

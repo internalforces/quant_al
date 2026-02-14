@@ -5,13 +5,13 @@ const darkLayout = {
   plot_bgcolor: '#131d29',
   font: { color: '#8892a0', size: 11 },
   xaxis: {
-    title: 'Date',
+    title: 'Date (일자)',
     gridcolor: '#2a3545',
     linecolor: '#2a3545',
     zerolinecolor: '#2a3545',
   },
   yaxis: {
-    title: 'Cumulative Return',
+    title: 'Cumulative Return (누적 수익률)',
     gridcolor: '#2a3545',
     linecolor: '#2a3545',
     zerolinecolor: '#2a3545',
@@ -26,7 +26,7 @@ export default function ReturnChart({ chartData }) {
 
   return (
     <div className="panel chart-panel">
-      <div className="panel-header">Cumulative Returns(누적 수익률)</div>
+      <div className="panel-header">Cumulative Returns (누적 수익률)</div>
       <div className="panel-body">
         <Plot
           data={[

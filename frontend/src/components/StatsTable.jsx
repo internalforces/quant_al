@@ -1,5 +1,5 @@
 function fmt(v, suffix = '') {
-  if (v == null) return 'N/A';
+  if (v == null) return 'N/A (데이터 없음)';
   return v.toFixed(2) + suffix;
 }
 
@@ -9,11 +9,11 @@ function valueClass(v) {
 }
 
 const metrics = [
-  { key: 'monthly_return_pct', label: 'Monthly Return', suffix: '%', colored: true },
-  { key: 'annual_return_pct', label: 'Annual Return', suffix: '%', colored: true },
-  { key: 'sharpe_ratio', label: 'Sharpe Ratio', suffix: '', colored: true },
-  { key: 'cumulative_strategy', label: 'Strategy Cum.', suffix: 'x', colored: false },
-  { key: 'cumulative_market', label: 'Market Cum.', suffix: 'x', colored: false },
+  { key: 'monthly_return_pct', label: 'Monthly Return (월간 수익률)', suffix: '%', colored: true },
+  { key: 'annual_return_pct', label: 'Annual Return (연환산 수익률)', suffix: '%', colored: true },
+  { key: 'sharpe_ratio', label: 'Sharpe Ratio (샤프 비율)', suffix: '', colored: true },
+  { key: 'cumulative_strategy', label: 'Strategy Cum. (전략 누적)', suffix: 'x', colored: false },
+  { key: 'cumulative_market', label: 'Market Cum. (시장 누적)', suffix: 'x', colored: false },
 ];
 
 export default function StatsTable({ stats }) {
