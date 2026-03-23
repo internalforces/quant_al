@@ -1,0 +1,8 @@
+www.gilgop.cloud {
+    redir https://gilgop.cloud{uri} permanent
+}
+
+gilgop.cloud {
+    encode zstd gzip
+    reverse_proxy mb-quant-web:8000
+}

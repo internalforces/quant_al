@@ -23,6 +23,11 @@ app.add_middleware(
 app.include_router(router)
 
 
+@app.get("/healthz", include_in_schema=False)
+async def healthz():
+    return {"status": "ok"}
+
+
 def _resolve_frontend_path(path: str) -> Optional[Path]:
     candidate = (frontend_dist / path).resolve()
     try:
