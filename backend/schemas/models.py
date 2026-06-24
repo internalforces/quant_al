@@ -45,6 +45,19 @@ class TickerSearchResponse(BaseModel):
     results: List[TickerSearchResult]
 
 
+class TickerResolutionResult(BaseModel):
+    query: str
+    ticker: str
+    name: str
+    market: str
+    exchange: str
+    source: str
+
+
+class TickerResolveResponse(BaseModel):
+    result: TickerResolutionResult
+
+
 class StockPriceResponse(BaseModel):
     ticker: str
     company: str
@@ -56,3 +69,13 @@ class StockPriceResponse(BaseModel):
     change: Optional[float]
     change_percent: Optional[float]
     currency: str
+
+
+class ResolvedStockPriceResponse(BaseModel):
+    resolution: TickerResolutionResult
+    price: StockPriceResponse
+
+
+class ResolvedAnalysisResponse(BaseModel):
+    resolution: TickerResolutionResult
+    analysis: AnalysisResponse

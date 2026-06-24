@@ -21,6 +21,24 @@ services:
         aliases:
           - mb-quant-web
 
+  mb-quant-bot:
+    profiles:
+      - bot
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["python", "-m", "telegram_bot.main"]
+    environment:
+      MB_QUANT_API_BASE_URL: http://mb-quant-web:8000/api
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_ALLOWED_CHAT_IDS: ${TELEGRAM_ALLOWED_CHAT_IDS:-}
+    depends_on:
+      mb-quant-web:
+        condition: service_healthy
+    networks:
+      - caddy_shared
+
 networks:
   caddy_shared:
     external: true

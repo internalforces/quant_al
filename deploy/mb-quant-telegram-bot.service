@@ -1,0 +1,14 @@
+[Unit]
+Description=MB Quant Telegram Bot
+After=network.target mb-quant-api.service
+
+[Service]
+WorkingDirectory=/var/www/mb-quant
+EnvironmentFile=-/var/www/mb-quant/.env
+Environment=MB_QUANT_API_BASE_URL=http://127.0.0.1:8000/api
+ExecStart=/var/www/mb-quant/.venv-web/bin/python -m telegram_bot.main
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

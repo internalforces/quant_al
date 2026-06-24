@@ -152,7 +152,7 @@ for TICKER in TICKERS:
 
         active = df['position'] != 0
         strategy_ret = np.zeros(len(df))
-        clipped = df.loc[active, 'raw_return'].clip(lower=STOP_LOSS, upper=TAKE_PROFIT)
+        clipped = df.loc[active, 'raw_return'].clip(lower=STOP_LOSS, upper=TAKE_PROFIT).fillna(0)
         strategy_ret[active.values] = clipped
         df['strategy_return'] = strategy_ret
 

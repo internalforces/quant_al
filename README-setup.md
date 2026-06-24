@@ -59,6 +59,36 @@ docker network inspect starterkit-prod_internal
 curl -I https://gilgop.cloud/healthz
 ```
 
+### Telegram bot with shared Caddy deployment
+
+The Telegram bot is a separate process that calls the MB Quant API. Create a new bot
+with BotFather, then run the compose profile:
+
+```bash
+cd /var/www/mb-quant
+export TELEGRAM_BOT_TOKEN="123456:replace-with-new-bot-token"
+docker compose -f deploy/docker-compose.shared-caddy.yml --profile bot up -d --build
+```
+
+Optional access control:
+
+```bash
+export TELEGRAM_ALLOWED_CHAT_IDS="123456789,-1001234567890"
+```
+
+Bot commands:
+
+```text
+/price 삼성전자
+/price AAPL
+/signal 삼성전자
+/signal 엔비디아
+```
+
+Do not run two polling processes with the same Telegram bot token. If another
+project already uses that token, either add these commands to that running bot or
+use a new BotFather token.
+
 ## 2. Reverse proxy without 443
 
 This project does not require port 443 to run.
@@ -85,6 +115,25 @@ npm run build
 sudo cp deploy/mb-quant-api.service /etc/systemd/system/mb-quant-api.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now mb-quant-api
+```
+
+### Telegram bot service
+
+Set the new bot token in `/var/www/mb-quant/.env`:
+
+```env
+TELEGRAM_BOT_TOKEN=123456:replace-with-new-bot-token
+MB_QUANT_API_BASE_URL=http://127.0.0.1:8000/api
+# Optional: comma-separated Telegram chat IDs
+TELEGRAM_ALLOWED_CHAT_IDS=
+```
+
+Then install the service:
+
+```bash
+sudo cp deploy/mb-quant-telegram-bot.service /etc/systemd/system/mb-quant-telegram-bot.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now mb-quant-telegram-bot
 ```
 
 ### Nginx on port 80
@@ -160,3 +209,14 @@ Example result:
 - If you expose FastAPI directly without nginx, make sure the server firewall allows the selected port.
 - If you use `8443` instead of `443`, users must include the port in the URL.
 - The existing nginx deployment keeps working exactly as before; 443 is not required by this repository.
+
+## API examples
+
+Name-based stock price and MB signal endpoints resolve Korean/English company
+names and tickers before fetching data:
+
+```bash
+curl "http://127.0.0.1:8000/api/resolve?q=삼성전자"
+curl "http://127.0.0.1:8000/api/price?q=삼성전자"
+curl "http://127.0.0.1:8000/api/signal?q=엔비디아"
+```

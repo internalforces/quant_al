@@ -5,3 +5,5 @@ yfinance
 pandas
 numpy
 scipy
+lxml
+python-telegram-bot>=22,<23
