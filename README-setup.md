@@ -83,7 +83,20 @@ Bot commands:
 /price AAPL
 /signal 삼성전자
 /signal 엔비디아
+/add 국장 005930.KS 삼전
+/add 미장 NVDA 엔비
+/list 국장
+/list 미장
+/price 삼전
+/signal 엔비
+/remove 삼전
+/help
 ```
+
+Aliases are shared per Telegram chat. People in the same group chat use the same
+alias list, while aliases in another group or private chat stay separate. In the
+Docker deployment the alias SQLite database is stored in the
+`mb_quant_bot_data` volume.
 
 Do not run two polling processes with the same Telegram bot token. If another
 project already uses that token, either add these commands to that running bot or
@@ -124,6 +137,7 @@ Set the new bot token in `/var/www/mb-quant/.env`:
 ```env
 TELEGRAM_BOT_TOKEN=123456:replace-with-new-bot-token
 MB_QUANT_API_BASE_URL=http://127.0.0.1:8000/api
+TELEGRAM_ALIAS_DB_PATH=/var/www/mb-quant/data/telegram_aliases.sqlite3
 # Optional: comma-separated Telegram chat IDs
 TELEGRAM_ALLOWED_CHAT_IDS=
 ```
@@ -219,4 +233,28 @@ names and tickers before fetching data:
 curl "http://127.0.0.1:8000/api/resolve?q=삼성전자"
 curl "http://127.0.0.1:8000/api/price?q=삼성전자"
 curl "http://127.0.0.1:8000/api/signal?q=엔비디아"
+```
+
+## Telegram command reference
+
+```text
+/add 국장 [국장 티커] [별명]
+/add 미장 [미장 티커] [별명]
+/list 국장
+/list 미장
+/price [회사명|티커|별명]
+/signal [회사명|티커|별명]
+/remove [별명]
+/whoami
+/help
+```
+
+Examples:
+
+```text
+/add 국장 005930.KS 삼전
+/add 국장 028300.KQ HLB
+/add 미장 NVDA 엔비
+/price 삼전
+/signal 엔비
 ```

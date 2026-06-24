@@ -6,6 +6,8 @@ After=network.target mb-quant-api.service
 WorkingDirectory=/var/www/mb-quant
 EnvironmentFile=-/var/www/mb-quant/.env
 Environment=MB_QUANT_API_BASE_URL=http://127.0.0.1:8000/api
+Environment=TELEGRAM_ALIAS_DB_PATH=/var/www/mb-quant/data/telegram_aliases.sqlite3
+ExecStartPre=/bin/mkdir -p /var/www/mb-quant/data
 ExecStart=/var/www/mb-quant/.venv-web/bin/python -m telegram_bot.main
 Restart=always
 RestartSec=5
