@@ -25,6 +25,7 @@ COPY backend/requirements.txt ./backend/requirements.txt
 RUN pip install -r backend/requirements.txt
 
 COPY backend ./backend
+COPY telegram_bot ./telegram_bot
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
 EXPOSE 8000
