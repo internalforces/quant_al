@@ -31,13 +31,19 @@ services:
     command: ["python", "-m", "telegram_bot.main"]
     environment:
       MB_QUANT_API_BASE_URL: http://mb-quant-web:8000/api
+      TELEGRAM_ALIAS_DB_PATH: /app/data/telegram_aliases.sqlite3
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_ALLOWED_CHAT_IDS: ${TELEGRAM_ALLOWED_CHAT_IDS:-}
     depends_on:
       mb-quant-web:
         condition: service_healthy
+    volumes:
+      - mb_quant_bot_data:/app/data
     networks:
       - caddy_shared
+
+volumes:
+  mb_quant_bot_data:
 
 networks:
   caddy_shared:

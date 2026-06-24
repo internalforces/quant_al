@@ -8,14 +8,18 @@ from telegram import Update
 from telegram.constants import ChatAction
 from telegram.ext import Application, CommandHandler, ContextTypes
 
+from telegram_bot.aliases import AliasEntry, AliasStore, VALID_MARKETS
+
 
 API_BASE_URL = os.getenv("MB_QUANT_API_BASE_URL", "http://127.0.0.1:8000/api").rstrip("/")
 API_TIMEOUT_SECONDS = float(os.getenv("MB_QUANT_API_TIMEOUT", "90"))
+ALIAS_DB_PATH = os.getenv("TELEGRAM_ALIAS_DB_PATH", "data/telegram_aliases.sqlite3")
 ALLOWED_CHAT_IDS = {
     item.strip()
     for item in os.getenv("TELEGRAM_ALLOWED_CHAT_IDS", "").split(",")
     if item.strip()
 }
+ALIAS_STORE = AliasStore(ALIAS_DB_PATH)
 
 
 class MbQuantApiError(RuntimeError):
@@ -43,6 +47,56 @@ async def _guard_chat(update: Update) -> bool:
     if update.effective_message:
         await update.effective_message.reply_text("이 봇을 사용할 권한이 없습니다.")
     return False
+
+
+def _normalize_market(value: str) -> Optional[str]:
+    normalized = value.strip().casefold()
+    if normalized in {"국장", "한국", "한국장", "국내", "kr", "krx", "kospi", "kosdaq"}:
+        return "국장"
+    if normalized in {"미장", "미국", "미국장", "해외", "us", "usa", "nasdaq", "nyse"}:
+        return "미장"
+    return None
+
+
+def _is_kr_market_resolution(resolution: dict[str, Any]) -> bool:
+    ticker = resolution.get("ticker", "")
+    exchange = resolution.get("exchange", "")
+    return exchange == "KRX" or ticker.endswith((".KS", ".KQ"))
+
+
+def _validate_alias(alias: str) -> Optional[str]:
+    if not alias.strip():
+        return "별명을 입력해 주세요."
+    if alias.startswith("/"):
+        return "별명은 / 로 시작할 수 없습니다."
+    if any(ch.isspace() for ch in alias):
+        return "별명은 공백 없이 한 단어로 입력해 주세요."
+    if len(alias) > 32:
+        return "별명은 32자 이하로 입력해 주세요."
+    return None
+
+
+def _get_alias_entry(update: Update, alias: str) -> AliasEntry | None:
+    chat_id = _chat_id(update)
+    if not chat_id:
+        return None
+    return ALIAS_STORE.get(chat_id, alias)
+
+
+def _apply_alias_resolution(payload: dict[str, Any], entry: AliasEntry) -> dict[str, Any]:
+    resolution = payload.get("resolution", {})
+    resolution.update(
+        {
+            "query": entry.alias,
+            "ticker": entry.ticker,
+            "name": entry.name,
+            "market": entry.market,
+            "exchange": entry.exchange,
+            "source": "stored_alias",
+        }
+    )
+    payload["resolution"] = resolution
+    return payload
 
 
 async def _api_get(path: str, params: dict[str, str]) -> dict[str, Any]:
@@ -108,6 +162,8 @@ def _display_name(resolution: dict[str, Any]) -> str:
     query = resolution.get("query") or ""
     name = resolution.get("name") or ""
     ticker = resolution.get("ticker") or ""
+    if resolution.get("source") == "stored_alias" and query and name and query != name:
+        return f"{query} ({name})"
     if query and name and query != name and _has_hangul(query):
         return f"{query} ({name})"
     return name or query or ticker
@@ -170,24 +226,162 @@ def _format_signal_response(payload: dict[str, Any]) -> str:
     )
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+def _help_text() -> str:
+    return "\n".join(
+        [
+            "MB Quant 봇 사용법",
+            "",
+            "조회",
+            "/price 삼성전자",
+            "/price AAPL",
+            "/signal 삼성전자",
+            "/signal 엔비디아",
+            "",
+            "별명 등록",
+            "/add 국장 005930.KS 삼전",
+            "/add 국장 028300.KQ HLB",
+            "/add 미장 NVDA 엔비",
+            "/add 미장 AAPL 애플",
+            "",
+            "별명 조회/삭제",
+            "/list 국장",
+            "/list 미장",
+            "/price 삼전",
+            "/signal 엔비",
+            "/remove 삼전",
+            "",
+            "운영",
+            "/whoami - 현재 chat_id 확인",
+            "",
+            "교육/연구용 정보이며 투자 권유가 아닙니다.",
+        ]
+    )
+
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not await _guard_chat(update):
         return
     if not update.effective_message:
         return
 
-    await update.effective_message.reply_text(
-        "\n".join(
-            [
-                "MB Quant 봇",
-                "",
-                "/price 삼성전자",
-                "/price AAPL",
-                "/signal 삼성전자",
-                "/signal 엔비디아",
-            ]
-        )
+    await update.effective_message.reply_text(_help_text())
+
+
+async def add_alias(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not await _guard_chat(update):
+        return
+    message = update.effective_message
+    chat = update.effective_chat
+    chat_id = _chat_id(update)
+    if not message or not chat or not chat_id:
+        return
+
+    args = context.args or []
+    if len(args) != 3:
+        await message.reply_text("사용법: /add 국장 005930.KS 삼전")
+        return
+
+    market = _normalize_market(args[0])
+    ticker_query = args[1].strip()
+    alias = args[2].strip()
+    if market not in VALID_MARKETS:
+        await message.reply_text("시장 구분은 국장 또는 미장으로 입력해 주세요.")
+        return
+
+    alias_error = _validate_alias(alias)
+    if alias_error:
+        await message.reply_text(alias_error)
+        return
+
+    await chat.send_action(ChatAction.TYPING)
+    try:
+        resolution = (await _api_get("/resolve", {"q": ticker_query}))["result"]
+    except Exception as e:
+        await message.reply_text(f"티커 확인 실패: {e}")
+        return
+
+    is_kr = _is_kr_market_resolution(resolution)
+    if market == "국장" and not is_kr:
+        await message.reply_text("국장에는 KRX 종목만 추가할 수 있습니다.")
+        return
+    if market == "미장" and is_kr:
+        await message.reply_text("미장에는 미국/해외 종목 티커를 입력해 주세요.")
+        return
+
+    entry = AliasEntry(
+        chat_id=chat_id,
+        market=market,
+        alias=alias,
+        ticker=resolution["ticker"],
+        name=resolution["name"],
+        exchange=resolution["exchange"],
     )
+    ALIAS_STORE.upsert(entry)
+    await message.reply_text(
+        f"추가했습니다: [{market}] {alias} -> {entry.ticker} ({entry.name})"
+    )
+
+
+async def list_aliases(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not await _guard_chat(update):
+        return
+    message = update.effective_message
+    chat_id = _chat_id(update)
+    if not message or not chat_id:
+        return
+
+    args = context.args or []
+    if len(args) != 1:
+        await message.reply_text("사용법: /list 국장 또는 /list 미장")
+        return
+
+    market = _normalize_market(args[0])
+    if market not in VALID_MARKETS:
+        await message.reply_text("시장 구분은 국장 또는 미장으로 입력해 주세요.")
+        return
+
+    entries = ALIAS_STORE.list_by_market(chat_id, market)
+    if not entries:
+        await message.reply_text(f"추가된 {market} 별명이 없습니다.")
+        return
+
+    lines = [f"{market} 별명 목록"]
+    for entry in entries:
+        lines.append(f"- {entry.alias}: {entry.ticker} ({entry.name})")
+    await message.reply_text("\n".join(lines))
+
+
+async def remove_alias(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not await _guard_chat(update):
+        return
+    message = update.effective_message
+    chat_id = _chat_id(update)
+    if not message or not chat_id:
+        return
+
+    args = context.args or []
+    if len(args) != 1:
+        await message.reply_text("사용법: /remove 삼전")
+        return
+
+    removed = ALIAS_STORE.delete(chat_id, args[0])
+    if not removed:
+        await message.reply_text(f"'{args[0]}' 별명을 찾지 못했습니다.")
+        return
+
+    await message.reply_text(
+        f"삭제했습니다: [{removed.market}] {removed.alias} -> {removed.ticker}"
+    )
+
+
+async def whoami(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not await _guard_chat(update):
+        return
+    if not update.effective_message:
+        return
+
+    chat_id = _chat_id(update)
+    await update.effective_message.reply_text(f"chat_id: {chat_id}")
 
 
 async def price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -200,12 +394,17 @@ async def price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     query = _query_from_args(context)
     if not query:
-        await message.reply_text("사용법: /price 삼성전자")
+        await message.reply_text("사용법: /price 삼성전자 또는 /price 삼전")
         return
+
+    alias_entry = _get_alias_entry(update, query)
+    api_query = alias_entry.ticker if alias_entry else query
 
     await chat.send_action(ChatAction.TYPING)
     try:
-        payload = await _api_get("/price", {"q": query})
+        payload = await _api_get("/price", {"q": api_query})
+        if alias_entry:
+            payload = _apply_alias_resolution(payload, alias_entry)
         await message.reply_text(_format_price_response(payload))
     except Exception as e:
         await message.reply_text(f"주가 조회 실패: {e}")
@@ -221,12 +420,17 @@ async def signal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     query = _query_from_args(context)
     if not query:
-        await message.reply_text("사용법: /signal 삼성전자")
+        await message.reply_text("사용법: /signal 삼성전자 또는 /signal 삼전")
         return
+
+    alias_entry = _get_alias_entry(update, query)
+    api_query = alias_entry.ticker if alias_entry else query
 
     await chat.send_action(ChatAction.TYPING)
     try:
-        payload = await _api_get("/signal", {"q": query})
+        payload = await _api_get("/signal", {"q": api_query})
+        if alias_entry:
+            payload = _apply_alias_resolution(payload, alias_entry)
         await message.reply_text(_format_signal_response(payload))
     except Exception as e:
         await message.reply_text(f"시그널 조회 실패: {e}")
@@ -238,7 +442,11 @@ def main() -> None:
         raise RuntimeError("TELEGRAM_BOT_TOKEN 환경변수가 필요합니다.")
 
     app = Application.builder().token(token).concurrent_updates(True).build()
-    app.add_handler(CommandHandler(["start", "help"], start))
+    app.add_handler(CommandHandler(["start", "help"], help_command))
+    app.add_handler(CommandHandler("add", add_alias))
+    app.add_handler(CommandHandler("list", list_aliases))
+    app.add_handler(CommandHandler("remove", remove_alias))
+    app.add_handler(CommandHandler("whoami", whoami))
     app.add_handler(CommandHandler("price", price))
     app.add_handler(CommandHandler("signal", signal))
     app.run_polling()
