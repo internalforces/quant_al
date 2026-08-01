@@ -42,6 +42,7 @@ def apply_strategy_returns(frame: pd.DataFrame) -> pd.DataFrame:
     result["raw_return"] = (
         result["next_open"] - result["current_open"]
     ) / result["current_open"]
+    result["market_return"] = result["raw_return"].fillna(0)
 
     gross_return = result["applied_position"] * result["raw_return"]
     result["strategy_return"] = gross_return.clip(
@@ -72,5 +73,5 @@ def build_strategy_frame(frame: pd.DataFrame) -> pd.DataFrame:
     result.loc[result["mb_pdf"] > upper_threshold, "signal"] = -1
     result = apply_strategy_returns(result)
     result["cumulative_strategy"] = (1 + result["strategy_return"]).cumprod()
-    result["cumulative_market"] = (1 + result["return"]).cumprod()
+    result["cumulative_market"] = (1 + result["market_return"]).cumprod()
     return result
