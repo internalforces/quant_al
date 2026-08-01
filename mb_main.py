@@ -142,19 +142,21 @@ for TICKER in TICKERS:
         df.loc[buy_idx, 'signal'] = 1
         df.loc[sell_idx, 'signal'] = -1
 
-        # 포지션 유지
+        # 종가 기준 신호는 다음 거래 구간부터 적용한다. -1은 숏 포지션이다.
         df['position'] = df['signal'].replace(0, np.nan).ffill().fillna(0)
+        df['applied_position'] = df['position'].shift(1).fillna(0)
 
-        # 전략 수익률(손절/익절)
+        # 전략 수익률(손절/익절): 당일 종가 신호가 당일 시가 수익률에
+        # 반영되지 않도록 한 칸 뒤의 포지션을 사용한다.
         df['current_open'] = df['Open']
         df['next_open'] = df['Open'].shift(-1)
         df['raw_return'] = (df['next_open'] - df['current_open']) / df['current_open']
 
-        active = df['position'] != 0
-        strategy_ret = np.zeros(len(df))
-        clipped = df.loc[active, 'raw_return'].clip(lower=STOP_LOSS, upper=TAKE_PROFIT).fillna(0)
-        strategy_ret[active.values] = clipped
-        df['strategy_return'] = strategy_ret
+        gross_return = df['applied_position'] * df['raw_return']
+        df['strategy_return'] = gross_return.clip(
+            lower=STOP_LOSS,
+            upper=TAKE_PROFIT,
+        ).fillna(0)
 
         # 누적 및 성과
         df['cumulative_strategy'] = (1 + df['strategy_return']).cumprod()
