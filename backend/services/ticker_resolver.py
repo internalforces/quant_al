@@ -230,6 +230,32 @@ def _krx_matches(query: str, max_results: int = 8) -> list[_KrxRecord]:
     return sorted(contains, key=lambda r: (len(r.name), r.name))[:max_results]
 
 
+def _find_krx_by_code(code: str) -> Optional[_KrxRecord]:
+    normalized = code[:6]
+    try:
+        records = _load_krx_records()
+    except KrxDataUnavailable:
+        return None
+    return next((record for record in records if record.code == normalized), None)
+
+
+def _bare_krx_code(query: str) -> Optional[str]:
+    match = re.fullmatch(r"(\d{6})", query.strip())
+    return match.group(1) if match else None
+
+
+async def _resolve_direct_krx_code(
+    query: str,
+    fallback: TickerResolution,
+) -> TickerResolution:
+    """Use the KRX list for bare codes without blocking the event loop."""
+    code = _bare_krx_code(query)
+    if not code:
+        return fallback
+    record = await asyncio.to_thread(_find_krx_by_code, code)
+    return record.to_resolution(query=query, source="direct") if record else fallback
+
+
 def _direct_symbol_resolution(query: str) -> Optional[TickerResolution]:
     raw = query.strip()
     upper = query.upper()
@@ -290,16 +316,17 @@ async def search_ticker_candidates(query: str, max_results: int = 8) -> list[dic
     if direct and direct.exchange != "KRX":
         candidates.append(direct)
     else:
-        candidates.extend(
-            record.to_resolution(query=normalized, source="krx")
-            for record in await asyncio.to_thread(
-                _krx_matches,
-                normalized,
-                max_results,
-            )
-        )
         if direct:
-            candidates.append(direct)
+            candidates.append(await _resolve_direct_krx_code(normalized, direct))
+        else:
+            candidates.extend(
+                record.to_resolution(query=normalized, source="krx")
+                for record in await asyncio.to_thread(
+                    _krx_matches,
+                    normalized,
+                    max_results,
+                )
+            )
 
     if len(candidates) < max_results and not _contains_hangul(normalized):
         try:
@@ -350,6 +377,8 @@ async def resolve_ticker(query: str) -> TickerResolution:
     direct = _direct_symbol_resolution(normalized)
     if direct and direct.exchange != "KRX":
         return direct
+    if direct:
+        return await _resolve_direct_krx_code(normalized, direct)
 
     krx_matches = [
         record.to_resolution(query=normalized, source="krx")
