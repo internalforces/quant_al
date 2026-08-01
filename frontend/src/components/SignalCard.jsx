@@ -16,6 +16,11 @@ export default function SignalCard({ lastSignal, lastPosition, latestDate }) {
     signalType = 'signal-hold';
     description = 'Maintaining existing position';
     krDescription = '기존 포지션 유지';
+  } else if (lastPosition === -1) {
+    label = 'SHORT (숏)';
+    signalType = 'signal-sell';
+    description = 'Maintaining short position';
+    krDescription = '숏 포지션 유지';
   } else {
     label = 'NONE (없음)';
     signalType = 'signal-none';

@@ -277,14 +277,16 @@ async def search_ticker_candidates(query: str, max_results: int = 8) -> list[dic
     if alias:
         candidates.append(alias)
 
-    candidates.extend(
-        record.to_resolution(query=normalized, source="krx")
-        for record in _krx_matches(normalized, max_results=max_results)
-    )
-
     direct = _direct_symbol_resolution(normalized)
-    if direct:
+    if direct and direct.exchange != "KRX":
         candidates.append(direct)
+    else:
+        candidates.extend(
+            record.to_resolution(query=normalized, source="krx")
+            for record in _krx_matches(normalized, max_results=max_results)
+        )
+        if direct:
+            candidates.append(direct)
 
     if len(candidates) < max_results and not _contains_hangul(normalized):
         try:
@@ -332,6 +334,10 @@ async def resolve_ticker(query: str) -> TickerResolution:
     if alias:
         return alias
 
+    direct = _direct_symbol_resolution(normalized)
+    if direct and direct.exchange != "KRX":
+        return direct
+
     krx_matches = [
         record.to_resolution(query=normalized, source="krx")
         for record in _krx_matches(normalized)
@@ -349,7 +355,6 @@ async def resolve_ticker(query: str) -> TickerResolution:
             suggestions=krx_matches[:5],
         )
 
-    direct = _direct_symbol_resolution(normalized)
     if direct:
         return direct
 

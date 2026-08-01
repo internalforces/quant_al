@@ -174,6 +174,8 @@ for TICKER in TICKERS:
             today_msg = f"🚨 {latest_date}: 급등(매도) 시그널 → 차익 실현/분할매도 고려"
         elif last_pos == 1:
             today_msg = f"ℹ️  {latest_date}: 보유 포지션 유지"
+        elif last_pos == -1:
+            today_msg = f"ℹ️  {latest_date}: 숏 포지션 유지"
         else:
             today_msg = f"ℹ️  {latest_date}: 시그널 없음(관망)"
 
