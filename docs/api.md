@@ -54,11 +54,22 @@ GET /api/price?q=애플
 
 ```json
 {
-  "resolution": { "ticker": "AAPL", "name": "Apple Inc." },
+  "resolution": {
+    "query": "애플",
+    "ticker": "AAPL",
+    "name": "Apple Inc.",
+    "market": "NASDAQ",
+    "exchange": "NASDAQ",
+    "source": "alias"
+  },
   "price": {
     "ticker": "AAPL",
+    "company": "Apple Inc.",
     "current_price": 0.0,
     "previous_close": 0.0,
+    "open": 0.0,
+    "day_high": 0.0,
+    "day_low": 0.0,
     "change": 0.0,
     "change_percent": 0.0,
     "currency": "USD"
@@ -82,8 +93,20 @@ GET /api/signal?q=005930.KS
 
 ```json
 {
-  "resolution": { "ticker": "005930.KS", "name": "삼성전자" },
+  "resolution": {
+    "query": "005930.KS",
+    "ticker": "005930.KS",
+    "name": "삼성전자",
+    "market": "KOSPI",
+    "exchange": "KRX",
+    "source": "direct"
+  },
   "analysis": {
+    "ticker": "005930.KS",
+    "company": "삼성전자",
+    "period_start": "2024-01-01",
+    "period_end": "2026-01-01",
+    "latest_date": "2026-01-01",
     "last_signal": 0,
     "last_position": 1,
     "stats": {
@@ -93,7 +116,14 @@ GET /api/signal?q=005930.KS
       "cumulative_strategy": 1.0,
       "cumulative_market": 1.0
     },
-    "chart_data": { "dates": [], "close": [], "signal": [] }
+    "chart_data": {
+      "dates": ["2026-01-01"],
+      "close": [0.0],
+      "cumulative_strategy": [1.0],
+      "cumulative_market": [1.0],
+      "mb_pdf": [0.0],
+      "signal": [0]
+    }
   }
 }
 ```
@@ -104,8 +134,8 @@ GET /api/signal?q=005930.KS
 
 | 상태 | 의미 |
 | --- | --- |
-| 404 | 종목을 찾지 못했거나 제공자가 가격 데이터를 반환하지 않음 |
+| 404 | 종목을 찾지 못했거나 제공자가 가격 데이터를 반환하지 않음. KRX/Yahoo 종목명 검색 장애도 후보 없음으로 보일 수 있음 |
 | 422 | 필수 질의값 누락 또는 형식 오류 |
-| 502 | KRX, Yahoo, yfinance 등 외부 공급자 조회 실패 |
+| 502 | 가격·분석 공급자 조회 실패 또는 검색·해석 중 처리되지 않은 외부 오류 |
 
 외부 공급자 응답은 변할 수 있으므로 클라이언트는 성공 응답만 가정하지 말고 오류 메시지를 표시해야 합니다.
