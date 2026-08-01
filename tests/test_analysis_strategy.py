@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from backend.services.analysis import apply_strategy_returns
+from backend.services.strategy import apply_strategy_returns
 
 
 def test_signal_is_applied_from_the_next_open_to_open_interval():
