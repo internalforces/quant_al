@@ -150,26 +150,32 @@ print(body)
 # -----------------------------
 # 메일 발송
 # -----------------------------
-if SENDER and RECIPIENTS and SMTP_SERVER and SMTP_USER and SMTP_PASS:
-    subject = f"[MB 퀀트] {today_ymd()} 통합 시그널 - {', '.join(TICKERS)}"
-    successful_recipients = []
-    failed_recipients = []
-    for rcpt in RECIPIENTS:
-        try:
-            send_email(
-                subject=subject, body=body, sender=SENDER, recipient=rcpt,
-                smtp_server=SMTP_SERVER, smtp_port=SMTP_PORT,
-                smtp_user=SMTP_USER, smtp_password=SMTP_PASS
-            )
-            successful_recipients.append(rcpt)
-            print(f"메일 전송 성공({rcpt})")
-        except Exception as e:
-            failed_recipients.append(rcpt)
-            print(f"메일 전송 실패({rcpt}): {e}")
+required_mail_settings = {
+    "EMAIL_SENDER": SENDER,
+    "EMAIL_RECIPIENTS": RECIPIENTS,
+    "SMTP_SERVER": SMTP_SERVER,
+    "SMTP_USER": SMTP_USER,
+    "SMTP_PASSWORD": SMTP_PASS,
+}
+missing_settings = [name for name, value in required_mail_settings.items() if not value]
+if missing_settings:
+    raise SystemExit(f"메일 전송 설정 누락: {', '.join(missing_settings)}")
 
-    if failed_recipients and not successful_recipients:
-        raise SystemExit(
-            f"모든 수신자에게 메일 전송 실패: {', '.join(failed_recipients)}"
+subject = f"[MB 퀀트] {today_ymd()} 통합 시그널 - {', '.join(TICKERS)}"
+successful_count = 0
+failed_count = 0
+for rcpt in RECIPIENTS:
+    try:
+        send_email(
+            subject=subject, body=body, sender=SENDER, recipient=rcpt,
+            smtp_server=SMTP_SERVER, smtp_port=SMTP_PORT,
+            smtp_user=SMTP_USER, smtp_password=SMTP_PASS
         )
-else:
-    print("환경변수 미설정으로 메일 전송 생략")
+        successful_count += 1
+    except Exception as e:
+        failed_count += 1
+        print(f"메일 전송 실패: {type(e).__name__}")
+
+print(f"메일 전송 결과: 성공 {successful_count}명, 실패 {failed_count}명")
+if failed_count and not successful_count:
+    raise SystemExit(f"모든 수신자({failed_count}명)에게 메일 전송 실패")
