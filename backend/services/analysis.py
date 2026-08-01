@@ -1,19 +1,12 @@
 from __future__ import annotations
 
-import math
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 from typing import Optional
-from scipy.stats import maxwell
 import yfinance as yf
 
-ROLLING_WINDOW = 15
-LOWER_Q = 0.20
-UPPER_Q = 0.90
-STOP_LOSS = -0.015
-TAKE_PROFIT = 0.05
-BACK_YEARS = 2
+from backend.services.strategy import BACK_YEARS, build_strategy_frame, evaluate_strategy
 
 
 def get_company_name(ticker: str) -> str:
@@ -28,19 +21,6 @@ def get_company_name(ticker: str) -> str:
         return ticker
 
 
-def evaluate_strategy(frame: pd.DataFrame):
-    monthly = frame["strategy_return"].resample("ME").sum(min_count=1)
-    mean_m = monthly.mean()
-    ann = mean_m * 12
-    std_m = monthly.std(ddof=1)
-    sharpe = (
-        (mean_m / std_m * math.sqrt(12))
-        if std_m and not np.isnan(std_m) and std_m != 0
-        else float("nan")
-    )
-    return mean_m, ann, sharpe
-
-
 def _safe_float(v) -> Optional[float]:
     if v is None:
         return None
@@ -52,31 +32,6 @@ def _safe_float(v) -> Optional[float]:
 
 def _series_to_list(s: pd.Series) -> list:
     return [_safe_float(v) for v in s]
-
-
-def apply_strategy_returns(frame: pd.DataFrame) -> pd.DataFrame:
-    """Apply end-of-day signals to the next tradable open-to-open return.
-
-    A signal on date ``t`` uses that day's close and therefore cannot affect the
-    return from ``open[t]`` to ``open[t + 1]``.  The one-bar shift keeps the
-    backtest free from that look-ahead bias.  A negative position represents a
-    short position, so its return is the inverse of the underlying return.
-    """
-    result = frame.copy()
-    result["position"] = result["signal"].replace(0, np.nan).ffill().fillna(0)
-    result["applied_position"] = result["position"].shift(1).fillna(0)
-    result["current_open"] = result["Open"]
-    result["next_open"] = result["Open"].shift(-1)
-    result["raw_return"] = (
-        result["next_open"] - result["current_open"]
-    ) / result["current_open"]
-
-    gross_return = result["applied_position"] * result["raw_return"]
-    result["strategy_return"] = gross_return.clip(
-        lower=STOP_LOSS,
-        upper=TAKE_PROFIT,
-    ).fillna(0)
-    return result
 
 
 def analyze_ticker(ticker: str) -> dict:
@@ -100,29 +55,8 @@ def analyze_ticker(ticker: str) -> dict:
     if not {"Open", "Close"}.issubset(df.columns):
         raise ValueError(f"Required columns (Open/Close) missing for {ticker}")
 
-    df = df.copy()
     company = get_company_name(ticker)
-
-    df["return"] = df["Close"].pct_change()
-    df.dropna(subset=["return"], inplace=True)
-
-    scale = df["return"].rolling(ROLLING_WINDOW).std()
-    scale = scale.clip(lower=1e-8)
-    df["mb_pdf"] = maxwell.pdf(np.abs(df["return"]), scale=scale)
-
-    lower_thr = df["mb_pdf"].rolling(ROLLING_WINDOW).quantile(LOWER_Q)
-    upper_thr = df["mb_pdf"].rolling(ROLLING_WINDOW).quantile(UPPER_Q)
-
-    df["signal"] = 0
-    buy_idx = df["mb_pdf"] < lower_thr
-    sell_idx = df["mb_pdf"] > upper_thr
-    df.loc[buy_idx, "signal"] = 1
-    df.loc[sell_idx, "signal"] = -1
-
-    df = apply_strategy_returns(df)
-
-    df["cumulative_strategy"] = (1 + df["strategy_return"]).cumprod()
-    df["cumulative_market"] = (1 + df["return"]).cumprod()
+    df = build_strategy_frame(df)
     mean_m, ann, sharpe = evaluate_strategy(df)
 
     latest_date = df.index[-1].strftime("%Y-%m-%d")
