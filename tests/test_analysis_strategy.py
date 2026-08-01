@@ -15,6 +15,7 @@ def test_signal_is_applied_from_the_next_open_to_open_interval():
     result = apply_strategy_returns(frame)
 
     assert result["strategy_return"].tolist() == pytest.approx([0.0, 0.01, 0.01, 0.0])
+    assert result["market_return"].tolist() == pytest.approx([0.01, 0.01, 0.01, 0.0])
 
 
 def test_short_position_inverts_the_underlying_return_and_applies_loss_limit():
