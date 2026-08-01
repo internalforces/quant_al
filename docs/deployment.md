@@ -61,7 +61,7 @@ python mb_main.py
 ```bash
 .venv/bin/python -m pytest -q
 cd frontend && npm run lint && npm run build
-curl -I http://127.0.0.1:8000/healthz
+curl --fail http://127.0.0.1:8000/healthz
 ```
 
 과거 서버별 설치 명령과 systemd/Nginx 예시는 [README-setup.md](../README-setup.md)에 보존되어 있습니다.

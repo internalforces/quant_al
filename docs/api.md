@@ -42,7 +42,25 @@ GET /api/resolve?q=삼전
 }
 ```
 
-검색 결과가 여러 개인 경우 HTTP 404와 함께 `message`, `suggestions`를 반환합니다. 프론트엔드는 이 값을 사람이 읽을 수 있는 오류와 후보 목록으로 표시합니다.
+KRX 검색 결과가 여러 개인 경우 HTTP 404와 함께 다음 형태를 반환합니다. 프론트엔드는 `detail.message`와 `detail.suggestions`를 사람이 읽을 수 있는 오류와 후보 목록으로 표시합니다.
+
+```json
+{
+  "detail": {
+    "message": "여러 종목이 검색되었습니다. 더 정확한 회사명을 입력해 주세요.",
+    "suggestions": [
+      {
+        "query": "삼성",
+        "ticker": "005930.KS",
+        "name": "삼성전자",
+        "market": "KOSPI",
+        "exchange": "KRX",
+        "source": "krx"
+      }
+    ]
+  }
+}
+```
 
 ## 가격 조회
 
