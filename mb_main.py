@@ -11,13 +11,11 @@
 2) 본 코드는 교육/연구용 예제이며 투자 권유가 아닙니다.
 """
 import os
-import math
-import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
-from scipy.stats import maxwell
 import yfinance as yf
 from dotenv import load_dotenv
+from backend.services.strategy import BACK_YEARS, build_strategy_frame, evaluate_strategy
 from module.mail import send_email
 
 # -----------------------------
@@ -52,10 +50,6 @@ TICKERS = [
     "NVDA","AAPL","GOOGL","AMZN","TSLA",
     "005930.KS","000660.KS","005380.KS","000270.KS","005490.KS"
 ][:10]  # 최대 10개
-ROLLING_WINDOW = 15
-LOWER_Q, UPPER_Q = 0.20, 0.90
-STOP_LOSS, TAKE_PROFIT = -0.015, 0.05
-BACK_YEARS = 2
 
 # -----------------------------
 # 환경 변수 로드 (.env)
@@ -86,17 +80,6 @@ def get_company_name(ticker: str) -> str:
         return ticker
 
 # -----------------------------
-# 성과 지표 함수 (루프 이전)
-# -----------------------------
-def evaluate_strategy(frame: pd.DataFrame):
-    monthly = frame['strategy_return'].resample('ME').sum(min_count=1)
-    mean_m = monthly.mean()
-    ann = mean_m * 12
-    std_m = monthly.std(ddof=1)
-    sharpe = (mean_m / std_m * math.sqrt(12)) if std_m and not np.isnan(std_m) and std_m != 0 else float('nan')
-    return mean_m, ann, sharpe
-
-# -----------------------------
 # 멀티 티커 처리
 # -----------------------------
 parts = []
@@ -120,47 +103,8 @@ for TICKER in TICKERS:
             parts.append(f"티커 {TICKER}: 필수 컬럼(Open/Close) 없음")
             continue
 
-        df = df.copy()
         company = get_company_name(TICKER)
-
-        # 수익률 계산
-        df["return"] = df["Close"].pct_change()
-        df.dropna(subset=["return"], inplace=True)
-
-        # MB 분포 기반 시그널
-        scale = df['return'].rolling(ROLLING_WINDOW).std()
-        # scale이 0이 되는 것을 방지 (inf/NaN 방지)
-        scale = scale.clip(lower=1e-8)
-        df['mb_pdf'] = maxwell.pdf(np.abs(df['return']), scale=scale)
-
-        lower_thr = df['mb_pdf'].rolling(ROLLING_WINDOW).quantile(LOWER_Q)
-        upper_thr = df['mb_pdf'].rolling(ROLLING_WINDOW).quantile(UPPER_Q)
-
-        df['signal'] = 0
-        buy_idx = df['mb_pdf'] < lower_thr
-        sell_idx = df['mb_pdf'] > upper_thr
-        df.loc[buy_idx, 'signal'] = 1
-        df.loc[sell_idx, 'signal'] = -1
-
-        # 종가 기준 신호는 다음 거래 구간부터 적용한다. -1은 숏 포지션이다.
-        df['position'] = df['signal'].replace(0, np.nan).ffill().fillna(0)
-        df['applied_position'] = df['position'].shift(1).fillna(0)
-
-        # 전략 수익률(손절/익절): 당일 종가 신호가 당일 시가 수익률에
-        # 반영되지 않도록 한 칸 뒤의 포지션을 사용한다.
-        df['current_open'] = df['Open']
-        df['next_open'] = df['Open'].shift(-1)
-        df['raw_return'] = (df['next_open'] - df['current_open']) / df['current_open']
-
-        gross_return = df['applied_position'] * df['raw_return']
-        df['strategy_return'] = gross_return.clip(
-            lower=STOP_LOSS,
-            upper=TAKE_PROFIT,
-        ).fillna(0)
-
-        # 누적 및 성과
-        df['cumulative_strategy'] = (1 + df['strategy_return']).cumprod()
-        df['cumulative_market'] = (1 + df['return']).cumprod()
+        df = build_strategy_frame(df)
         mean_m, ann, sharpe = evaluate_strategy(df)
 
         # 요약/본문

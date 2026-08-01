@@ -72,7 +72,7 @@ async def price_by_query(q: str = Query(..., min_length=1)):
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Price fetch failed: {e}")
+        raise HTTPException(status_code=502, detail=f"Price fetch failed: {e}")
 
 
 @router.get("/price/{ticker}", response_model=StockPriceResponse)
@@ -84,7 +84,7 @@ async def price(ticker: str):
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Price fetch failed: {e}")
+        raise HTTPException(status_code=502, detail=f"Price fetch failed: {e}")
 
 
 @router.get("/signal", response_model=ResolvedAnalysisResponse)
@@ -105,7 +105,7 @@ async def signal_by_query(q: str = Query(..., min_length=1)):
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Signal fetch failed: {e}")
+        raise HTTPException(status_code=502, detail=f"Signal fetch failed: {e}")
 
 
 @router.get("/analyze/{ticker}", response_model=AnalysisResponse)
@@ -117,4 +117,4 @@ async def analyze(ticker: str):
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {e}")
+        raise HTTPException(status_code=502, detail=f"Analysis failed: {e}")
