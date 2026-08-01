@@ -19,6 +19,7 @@
 - MB 분포 기반 매수·매도·보유·숏 상태와 전략/시장 누적 수익률 비교
 - 가격·전략 성과·신호를 보여주는 React 대시보드
 - Telegram Bot의 `/price`, `/signal`, 종목 별칭 등록·조회·삭제
+- GitHub Actions 기반 평일 23:00 KST 정기 신호 이메일 리포트
 - Docker, 헬스체크, Caddy/Nginx 배포 구성
 - API·전략·종목 해석 테스트와 GitHub Actions 품질 검사
 
@@ -31,6 +32,7 @@
 | Data | yfinance, KRX 기업 목록, Yahoo Finance Search | 국내외 종목명·티커 해석과 가격 데이터 확보 |
 | Analysis | Pandas, NumPy, SciPy | 시계열 전처리와 MB 분포 기반 신호 계산 |
 | Bot | python-telegram-bot, SQLite | 채팅별 별칭을 보존하는 빠른 조회 채널 |
+| Report | GitHub Actions, SMTP | 평일 배치 실행으로 종목별 신호·포지션·성과 요약 전달 |
 | Delivery | Docker, GitHub Actions, Caddy/Nginx | 재현 가능한 빌드·상태 점검·배포 |
 
 ## 시스템 흐름
@@ -47,6 +49,10 @@ flowchart LR
     A --> P["가격·전략 분석"]
     P --> YF["yfinance"]
     T --> DB[("SQLite 별칭 저장소")]
+    GA["GitHub Actions\n평일 23:00 KST"] --> JOB["mb_main.py\n정기 신호 리포트"]
+    JOB --> P
+    JOB --> SMTP["SMTP"]
+    SMTP --> M["수신자"]
 ```
 
 ## 빠른 시작
@@ -98,7 +104,7 @@ Pull Request에서는 GitHub Actions가 백엔드 테스트와 프론트엔드 �
 backend/              FastAPI, 종목 해석, 가격·전략 서비스
 frontend/             React 대시보드와 Plotly 차트
 telegram_bot/         Telegram 명령과 채팅별 별칭 저장
-module/               이메일 전송 모듈
+module/               SMTP 이메일 전송 모듈
 deploy/               Docker, systemd, Caddy/Nginx 구성
 tests/                전략·종목 해석·API 테스트
 docs/                 포트폴리오 및 운영 문서

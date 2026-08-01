@@ -2,7 +2,7 @@
 맥스웰-볼츠만(MB) 분포 기반 퀀트 신호 + 간단 백테스트
 - 자산: AAPL (2년)
 - 이상치 정의: 하위 20%(매수), 상위 10%(매도)
-- 실행 시각: 매일 22:25 KST(미국 전일 종가 반영 가정)
+- 실행 시각: 평일 23:00 KST(미국 전일 종가 반영 가정)
 - 포지션 유지형 + 손절/익절: -1.5%, +5%
 - 결과/신호 이메일 발송
 
@@ -58,7 +58,7 @@ load_dotenv()
 SENDER = os.getenv("EMAIL_SENDER")
 RECIPIENTS = [e.strip() for e in os.getenv("EMAIL_RECIPIENTS", "").split(',') if e.strip()]
 SMTP_SERVER = os.getenv("SMTP_SERVER")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_PORT = int(os.getenv("SMTP_PORT") or "587")
 SMTP_USER = os.getenv("SMTP_USER")
 SMTP_PASS = os.getenv("SMTP_PASSWORD")
 
@@ -152,6 +152,8 @@ print(body)
 # -----------------------------
 if SENDER and RECIPIENTS and SMTP_SERVER and SMTP_USER and SMTP_PASS:
     subject = f"[MB 퀀트] {today_ymd()} 통합 시그널 - {', '.join(TICKERS)}"
+    successful_recipients = []
+    failed_recipients = []
     for rcpt in RECIPIENTS:
         try:
             send_email(
@@ -159,7 +161,15 @@ if SENDER and RECIPIENTS and SMTP_SERVER and SMTP_USER and SMTP_PASS:
                 smtp_server=SMTP_SERVER, smtp_port=SMTP_PORT,
                 smtp_user=SMTP_USER, smtp_password=SMTP_PASS
             )
+            successful_recipients.append(rcpt)
+            print(f"메일 전송 성공({rcpt})")
         except Exception as e:
+            failed_recipients.append(rcpt)
             print(f"메일 전송 실패({rcpt}): {e}")
+
+    if failed_recipients and not successful_recipients:
+        raise SystemExit(
+            f"모든 수신자에게 메일 전송 실패: {', '.join(failed_recipients)}"
+        )
 else:
     print("환경변수 미설정으로 메일 전송 생략")
