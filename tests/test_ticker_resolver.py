@@ -35,6 +35,24 @@ def test_bare_kosdaq_code_uses_krx_market_suffix(monkeypatch):
     assert result.name == "HLB"
 
 
+def test_suffixed_krx_code_uses_krx_metadata(monkeypatch):
+    record = ticker_resolver._KrxRecord(
+        code="005930",
+        ticker="005930.KS",
+        name="삼성전자",
+        market="KOSPI",
+        exchange="KRX",
+        compact_name="삼성전자",
+    )
+    monkeypatch.setattr(ticker_resolver, "_find_krx_by_code", lambda _code: record)
+
+    result = asyncio.run(ticker_resolver.resolve_ticker("005930.KS"))
+
+    assert result.ticker == "005930.KS"
+    assert result.name == "삼성전자"
+    assert result.market == "KOSPI"
+
+
 def test_krx_load_failure_is_not_cached(monkeypatch):
     attempts = 0
 
