@@ -239,8 +239,8 @@ def _find_krx_by_code(code: str) -> Optional[_KrxRecord]:
     return next((record for record in records if record.code == normalized), None)
 
 
-def _bare_krx_code(query: str) -> Optional[str]:
-    match = re.fullmatch(r"(\d{6})", query.strip())
+def _krx_code(query: str) -> Optional[str]:
+    match = re.fullmatch(r"(\d{6})(?:\.(?:KS|KQ))?", query.strip(), re.IGNORECASE)
     return match.group(1) if match else None
 
 
@@ -248,8 +248,8 @@ async def _resolve_direct_krx_code(
     query: str,
     fallback: TickerResolution,
 ) -> TickerResolution:
-    """Use the KRX list for bare codes without blocking the event loop."""
-    code = _bare_krx_code(query)
+    """Use the KRX list for numeric codes without blocking the event loop."""
+    code = _krx_code(query)
     if not code:
         return fallback
     record = await asyncio.to_thread(_find_krx_by_code, code)
