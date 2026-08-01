@@ -4,6 +4,19 @@ import AnalysisResult from './components/AnalysisResult';
 import StockPrice from './components/StockPrice';
 import { analyzeTicker, fetchStockPrice } from './api/client';
 
+function getErrorMessage(error, fallback) {
+  const detail = error?.response?.data?.detail;
+  if (typeof detail === 'string') return detail;
+  if (detail && typeof detail === 'object') {
+    const suggestions = (detail.suggestions || [])
+      .slice(0, 5)
+      .map((item) => `${item.name || item.ticker} (${item.ticker})`)
+      .join(', ');
+    return suggestions ? `${detail.message || fallback} 후보: ${suggestions}` : (detail.message || fallback);
+  }
+  return error?.message || fallback;
+}
+
 export default function App() {
   const [analysisData, setAnalysisData] = useState(null);
   const [priceData, setPriceData] = useState(null);
@@ -28,19 +41,19 @@ export default function App() {
     if (analysisResult.status === 'fulfilled') {
       setAnalysisData(analysisResult.value);
     } else {
-      const msg = analysisResult.reason?.response?.data?.detail
-        || analysisResult.reason?.message
-        || 'Analysis failed (분석에 실패했습니다)';
-      setAnalysisError(msg);
+      setAnalysisError(getErrorMessage(
+        analysisResult.reason,
+        'Analysis failed (분석에 실패했습니다)',
+      ));
     }
 
     if (priceResult.status === 'fulfilled') {
       setPriceData(priceResult.value);
     } else {
-      const msg = priceResult.reason?.response?.data?.detail
-        || priceResult.reason?.message
-        || 'Failed to fetch price (주가 조회에 실패했습니다)';
-      setPriceError(msg);
+      setPriceError(getErrorMessage(
+        priceResult.reason,
+        'Failed to fetch price (주가 조회에 실패했습니다)',
+      ));
     }
 
     setLoading(false);

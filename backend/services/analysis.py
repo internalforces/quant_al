@@ -54,6 +54,31 @@ def _series_to_list(s: pd.Series) -> list:
     return [_safe_float(v) for v in s]
 
 
+def apply_strategy_returns(frame: pd.DataFrame) -> pd.DataFrame:
+    """Apply end-of-day signals to the next tradable open-to-open return.
+
+    A signal on date ``t`` uses that day's close and therefore cannot affect the
+    return from ``open[t]`` to ``open[t + 1]``.  The one-bar shift keeps the
+    backtest free from that look-ahead bias.  A negative position represents a
+    short position, so its return is the inverse of the underlying return.
+    """
+    result = frame.copy()
+    result["position"] = result["signal"].replace(0, np.nan).ffill().fillna(0)
+    result["applied_position"] = result["position"].shift(1).fillna(0)
+    result["current_open"] = result["Open"]
+    result["next_open"] = result["Open"].shift(-1)
+    result["raw_return"] = (
+        result["next_open"] - result["current_open"]
+    ) / result["current_open"]
+
+    gross_return = result["applied_position"] * result["raw_return"]
+    result["strategy_return"] = gross_return.clip(
+        lower=STOP_LOSS,
+        upper=TAKE_PROFIT,
+    ).fillna(0)
+    return result
+
+
 def analyze_ticker(ticker: str) -> dict:
     end = datetime.now()
     start = end - timedelta(days=BACK_YEARS * 365 + 7)
@@ -94,21 +119,7 @@ def analyze_ticker(ticker: str) -> dict:
     df.loc[buy_idx, "signal"] = 1
     df.loc[sell_idx, "signal"] = -1
 
-    df["position"] = df["signal"].replace(0, np.nan).ffill().fillna(0)
-
-    df["current_open"] = df["Open"]
-    df["next_open"] = df["Open"].shift(-1)
-    df["raw_return"] = (df["next_open"] - df["current_open"]) / df["current_open"]
-
-    active = df["position"] != 0
-    strategy_ret = np.zeros(len(df))
-    clipped = (
-        df.loc[active, "raw_return"]
-        .clip(lower=STOP_LOSS, upper=TAKE_PROFIT)
-        .fillna(0)
-    )
-    strategy_ret[active.values] = clipped
-    df["strategy_return"] = strategy_ret
+    df = apply_strategy_returns(df)
 
     df["cumulative_strategy"] = (1 + df["strategy_return"]).cumprod()
     df["cumulative_market"] = (1 + df["return"]).cumprod()

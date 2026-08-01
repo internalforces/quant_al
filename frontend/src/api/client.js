@@ -9,12 +9,12 @@ export async function searchTickers(query) {
   return data.results;
 }
 
-export async function analyzeTicker(ticker) {
-  const { data } = await api.get(`/analyze/${encodeURIComponent(ticker)}`);
-  return data;
+export async function analyzeTicker(query) {
+  const { data } = await api.get('/signal', { params: { q: query } });
+  return data.analysis;
 }
 
-export async function fetchStockPrice(ticker) {
-  const { data } = await api.get(`/price/${encodeURIComponent(ticker)}`);
-  return data;
+export async function fetchStockPrice(query) {
+  const { data } = await api.get('/price', { params: { q: query } });
+  return data.price;
 }
