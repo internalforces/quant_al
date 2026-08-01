@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import asdict, dataclass
 from functools import lru_cache
 from io import BytesIO
 import re
+import time
 from typing import Iterable, Optional
 
 import httpx
@@ -15,6 +17,12 @@ KRX_CORP_LIST_URL = (
     "https://kind.krx.co.kr/corpgeneral/corpList.do"
     "?method=download&searchType=13"
 )
+KRX_TIMEOUT_SECONDS = 5.0
+KRX_RETRY_DELAY_SECONDS = 0.2
+
+
+class KrxDataUnavailable(RuntimeError):
+    pass
 
 
 @dataclass(frozen=True)
@@ -156,16 +164,26 @@ def _market_label(market_name: str) -> str:
 
 @lru_cache(maxsize=1)
 def _load_krx_records() -> tuple[_KrxRecord, ...]:
-    try:
-        headers = {"User-Agent": "Mozilla/5.0"}
-        resp = httpx.get(KRX_CORP_LIST_URL, headers=headers, timeout=15.0)
-        resp.raise_for_status()
-        frames = pd.read_html(BytesIO(resp.content), header=0, encoding="euc-kr")
-    except Exception:
-        return ()
+    headers = {"User-Agent": "Mozilla/5.0"}
+    last_error: Exception | None = None
+    frames = []
+    for attempt in range(2):
+        try:
+            resp = httpx.get(
+                KRX_CORP_LIST_URL,
+                headers=headers,
+                timeout=KRX_TIMEOUT_SECONDS,
+            )
+            resp.raise_for_status()
+            frames = pd.read_html(BytesIO(resp.content), header=0, encoding="euc-kr")
+            break
+        except (httpx.HTTPError, ValueError, OSError) as error:
+            last_error = error
+            if attempt == 0:
+                time.sleep(KRX_RETRY_DELAY_SECONDS)
 
     if not frames:
-        return ()
+        raise KrxDataUnavailable("KRX 종목 목록을 불러오지 못했습니다.") from last_error
 
     df = frames[0]
     records: list[_KrxRecord] = []
@@ -191,20 +209,15 @@ def _load_krx_records() -> tuple[_KrxRecord, ...]:
     return tuple(records)
 
 
-def _find_krx_by_code(code: str) -> Optional[_KrxRecord]:
-    normalized = code[:6]
-    for record in _load_krx_records():
-        if record.code == normalized:
-            return record
-    return None
-
-
 def _krx_matches(query: str, max_results: int = 8) -> list[_KrxRecord]:
     compacted = _compact(query)
     if not compacted:
         return []
 
-    records = list(_load_krx_records())
+    try:
+        records = list(_load_krx_records())
+    except KrxDataUnavailable:
+        return []
     exact = [r for r in records if r.compact_name == compacted]
     if exact:
         return exact[:max_results]
@@ -222,10 +235,6 @@ def _direct_symbol_resolution(query: str) -> Optional[TickerResolution]:
     upper = query.upper()
     krx_match = re.fullmatch(r"(\d{6})(?:\.(KS|KQ))?", upper)
     if krx_match:
-        record = _find_krx_by_code(krx_match.group(1))
-        if record:
-            return record.to_resolution(query=query, source="direct")
-
         suffix = krx_match.group(2) or "KS"
         return TickerResolution(
             query=query,
@@ -283,7 +292,11 @@ async def search_ticker_candidates(query: str, max_results: int = 8) -> list[dic
     else:
         candidates.extend(
             record.to_resolution(query=normalized, source="krx")
-            for record in _krx_matches(normalized, max_results=max_results)
+            for record in await asyncio.to_thread(
+                _krx_matches,
+                normalized,
+                max_results,
+            )
         )
         if direct:
             candidates.append(direct)
@@ -340,7 +353,7 @@ async def resolve_ticker(query: str) -> TickerResolution:
 
     krx_matches = [
         record.to_resolution(query=normalized, source="krx")
-        for record in _krx_matches(normalized)
+        for record in await asyncio.to_thread(_krx_matches, normalized)
     ]
     exact_krx = [
         item for item in krx_matches if _compact(item.name) == _compact(normalized)
