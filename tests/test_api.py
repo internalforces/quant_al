@@ -206,3 +206,17 @@ def test_rate_limiter_discards_inactive_client_state(monkeypatch):
     assert limiter.retry_after("active-client") is None
 
     assert "old-client" not in limiter._requests
+
+
+def test_ttl_cache_discards_expired_keys_globally(monkeypatch):
+    now = 0.0
+    cache = analysis_router._TtlCache(ttl_seconds=60)
+
+    monkeypatch.setattr(analysis_router.time, "monotonic", lambda: now)
+    cache.set("old-key", {"value": "old"})
+    assert "old-key" in cache._values
+
+    now = 60.0
+    assert cache.get("other-key") is None
+
+    assert "old-key" not in cache._values
