@@ -5,6 +5,7 @@ import os
 import time
 from collections import deque
 from functools import partial
+from heapq import heappop, heappush
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
@@ -32,19 +33,34 @@ class _ClientRateLimiter:
     def __init__(self, requests_per_minute: int) -> None:
         self.requests_per_minute = requests_per_minute
         self._requests: dict[str, deque[float]] = {}
+        self._expiry: list[tuple[float, str]] = []
+
+    def _remove_inactive_clients(self, now: float) -> None:
+        while self._expiry and self._expiry[0][0] <= now:
+            _, client_id = heappop(self._expiry)
+            requests = self._requests.get(client_id)
+            if requests is None:
+                continue
+            while requests and now - requests[0] >= 60:
+                requests.popleft()
+            if not requests:
+                self._requests.pop(client_id, None)
 
     def retry_after(self, client_id: str) -> int | None:
         now = time.monotonic()
+        self._remove_inactive_clients(now)
         requests = self._requests.setdefault(client_id, deque())
         while requests and now - requests[0] >= 60:
             requests.popleft()
         if len(requests) >= self.requests_per_minute:
             return max(1, int(60 - (now - requests[0])) + 1)
         requests.append(now)
+        heappush(self._expiry, (now + 60, client_id))
         return None
 
     def clear(self) -> None:
         self._requests.clear()
+        self._expiry.clear()
 
 
 class _TtlCache:
