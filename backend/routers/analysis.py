@@ -67,9 +67,18 @@ class _TtlCache:
     def __init__(self, ttl_seconds: int) -> None:
         self.ttl_seconds = ttl_seconds
         self._values: dict[str, tuple[float, dict[str, Any]]] = {}
+        self._expiry: list[tuple[float, str]] = []
         self._inflight: dict[str, asyncio.Task] = {}
 
+    def _remove_expired_values(self, now: float) -> None:
+        while self._expiry and self._expiry[0][0] <= now:
+            _, key = heappop(self._expiry)
+            value = self._values.get(key)
+            if value is not None and value[0] <= now:
+                self._values.pop(key, None)
+
     def get(self, key: str) -> dict[str, Any] | None:
+        self._remove_expired_values(time.monotonic())
         value = self._values.get(key)
         if not value or value[0] <= time.monotonic():
             self._values.pop(key, None)
@@ -77,7 +86,9 @@ class _TtlCache:
         return value[1]
 
     def set(self, key: str, value: dict[str, Any]) -> None:
-        self._values[key] = (time.monotonic() + self.ttl_seconds, value)
+        expires_at = time.monotonic() + self.ttl_seconds
+        self._values[key] = (expires_at, value)
+        heappush(self._expiry, (expires_at, key))
 
     async def get_or_load(
         self,
@@ -109,6 +120,7 @@ class _TtlCache:
 
     def clear(self) -> None:
         self._values.clear()
+        self._expiry.clear()
         self._inflight.clear()
 
 
