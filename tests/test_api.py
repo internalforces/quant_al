@@ -1,3 +1,6 @@
+import asyncio
+import time
+
 from fastapi.testclient import TestClient
 
 from backend.main import app
@@ -123,6 +126,37 @@ def test_price_endpoint_uses_short_lived_cache(monkeypatch):
 
     assert client.get("/api/price", params={"q": "애플"}).status_code == 200
     assert client.get("/api/price", params={"q": "애플"}).status_code == 200
+    assert calls == 1
+
+
+def test_price_endpoint_coalesces_concurrent_cache_misses(monkeypatch):
+    calls = 0
+
+    def fetch_price(_ticker: str):
+        nonlocal calls
+        calls += 1
+        time.sleep(0.05)
+        return {
+            "ticker": "AAPL",
+            "company": "Apple Inc.",
+            "current_price": 100.0,
+            "previous_close": 99.0,
+            "open": 99.5,
+            "day_high": 101.0,
+            "day_low": 98.0,
+            "change": 1.0,
+            "change_percent": 1.01,
+            "currency": "USD",
+        }
+
+    async def request_prices():
+        return await asyncio.gather(
+            *(analysis_router.price("AAPL") for _ in range(5))
+        )
+
+    monkeypatch.setattr(analysis_router, "get_stock_price", fetch_price)
+
+    assert len(asyncio.run(request_prices())) == 5
     assert calls == 1
 
 

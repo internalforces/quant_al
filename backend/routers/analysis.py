@@ -6,7 +6,7 @@ import time
 from collections import deque
 from functools import partial
 from heapq import heappop, heappush
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 
@@ -67,6 +67,7 @@ class _TtlCache:
     def __init__(self, ttl_seconds: int) -> None:
         self.ttl_seconds = ttl_seconds
         self._values: dict[str, tuple[float, dict[str, Any]]] = {}
+        self._inflight: dict[str, asyncio.Task] = {}
 
     def get(self, key: str) -> dict[str, Any] | None:
         value = self._values.get(key)
@@ -78,8 +79,37 @@ class _TtlCache:
     def set(self, key: str, value: dict[str, Any]) -> None:
         self._values[key] = (time.monotonic() + self.ttl_seconds, value)
 
+    async def get_or_load(
+        self,
+        key: str,
+        loader: Callable[[], Awaitable[dict[str, Any]]],
+    ) -> dict[str, Any]:
+        cached = self.get(key)
+        if cached is not None:
+            return cached
+
+        task = self._inflight.get(key)
+        if task is None:
+            task = asyncio.create_task(self._load_and_cache(key, loader))
+            self._inflight[key] = task
+        try:
+            return await asyncio.shield(task)
+        finally:
+            if task.done() and self._inflight.get(key) is task:
+                self._inflight.pop(key, None)
+
+    async def _load_and_cache(
+        self,
+        key: str,
+        loader: Callable[[], Awaitable[dict[str, Any]]],
+    ) -> dict[str, Any]:
+        value = await loader()
+        self.set(key, value)
+        return value
+
     def clear(self) -> None:
         self._values.clear()
+        self._inflight.clear()
 
 
 def _positive_env_int(name: str, default: int) -> int:
@@ -160,13 +190,13 @@ async def price_by_query(
     loop = asyncio.get_running_loop()
     try:
         resolution = await resolve_ticker(q)
-        result = _price_cache.get(resolution.ticker)
-        if result is None:
-            result = await loop.run_in_executor(
+        result = await _price_cache.get_or_load(
+            resolution.ticker,
+            lambda: loop.run_in_executor(
                 None,
                 partial(get_stock_price, resolution.ticker),
-            )
-            _price_cache.set(resolution.ticker, result)
+            ),
+        )
         return ResolvedStockPriceResponse(
             resolution=resolution.to_dict(),
             price=StockPriceResponse(**result),
@@ -186,10 +216,10 @@ async def price(
 ):
     loop = asyncio.get_running_loop()
     try:
-        result = _price_cache.get(ticker)
-        if result is None:
-            result = await loop.run_in_executor(None, partial(get_stock_price, ticker))
-            _price_cache.set(ticker, result)
+        result = await _price_cache.get_or_load(
+            ticker,
+            lambda: loop.run_in_executor(None, partial(get_stock_price, ticker)),
+        )
         return StockPriceResponse(**result)
     except ValueError as error:
         raise HTTPException(status_code=404, detail=str(error))
@@ -205,13 +235,13 @@ async def signal_by_query(
     loop = asyncio.get_running_loop()
     try:
         resolution = await resolve_ticker(q)
-        result = _analysis_cache.get(resolution.ticker)
-        if result is None:
-            result = await loop.run_in_executor(
+        result = await _analysis_cache.get_or_load(
+            resolution.ticker,
+            lambda: loop.run_in_executor(
                 None,
                 partial(analyze_ticker, resolution.ticker),
-            )
-            _analysis_cache.set(resolution.ticker, result)
+            ),
+        )
         return ResolvedAnalysisResponse(
             resolution=resolution.to_dict(),
             analysis=AnalysisResponse(**result),
@@ -231,10 +261,10 @@ async def analyze(
 ):
     loop = asyncio.get_running_loop()
     try:
-        result = _analysis_cache.get(ticker)
-        if result is None:
-            result = await loop.run_in_executor(None, partial(analyze_ticker, ticker))
-            _analysis_cache.set(ticker, result)
+        result = await _analysis_cache.get_or_load(
+            ticker,
+            lambda: loop.run_in_executor(None, partial(analyze_ticker, ticker)),
+        )
         return AnalysisResponse(**result)
     except ValueError as error:
         raise HTTPException(status_code=404, detail=str(error))
