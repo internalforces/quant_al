@@ -194,6 +194,36 @@ def test_api_rate_limit_returns_retry_header():
     assert limited.headers["retry-after"]
 
 
+def test_async_rate_limit_dependency_serializes_concurrent_requests():
+    class RequestStub:
+        headers: dict[str, str] = {}
+
+        class client:
+            host = "test-client"
+
+    limiter = analysis_router._rate_limiter
+    original_limit = limiter.requests_per_minute
+    limiter.requests_per_minute = 1
+
+    async def enforce_once():
+        try:
+            await analysis_router._enforce_rate_limit(RequestStub())
+            return 200
+        except analysis_router.HTTPException as error:
+            return error.status_code
+
+    async def enforce_concurrently():
+        return await asyncio.gather(*(enforce_once() for _ in range(5)))
+
+    try:
+        statuses = asyncio.run(enforce_concurrently())
+    finally:
+        limiter.requests_per_minute = original_limit
+
+    assert statuses.count(200) == 1
+    assert statuses.count(429) == 4
+
+
 def test_rate_limiter_discards_inactive_client_state(monkeypatch):
     now = 0.0
     limiter = analysis_router._ClientRateLimiter(requests_per_minute=30)
