@@ -48,4 +48,4 @@ volumes:
 networks:
   caddy_shared:
     external: true
-    name: ${CADDY_SHARED_NETWORK:-starterkit-prod_internal}
+    name: ${CADDY_SHARED_NETWORK:?Set CADDY_SHARED_NETWORK to the shared Caddy network name}
