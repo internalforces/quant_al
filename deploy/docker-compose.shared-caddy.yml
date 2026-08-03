@@ -8,6 +8,8 @@ services:
       - "8000"
     environment:
       MB_QUANT_TRUST_PROXY_HEADERS: "true"
+      MB_QUANT_ALLOWED_ORIGINS: ${MB_QUANT_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      MB_QUANT_REQUESTS_PER_MINUTE: ${MB_QUANT_REQUESTS_PER_MINUTE:-30}
     healthcheck:
       test:
         [
