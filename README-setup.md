@@ -20,14 +20,14 @@ This repository now includes:
 
 ```bash
 cd /var/www/mb-quant
+export CADDY_SHARED_NETWORK=<existing-caddy-network-name>
 docker compose -f deploy/docker-compose.shared-caddy.yml up -d --build
 ```
 
 Notes:
 
 - No host `80/443` ports are published from this compose file
-- The service joins the external Docker network `starterkit-prod_internal` by default
-- If your shared Caddy network name is different, set `CADDY_SHARED_NETWORK=<network-name>`
+- `CADDY_SHARED_NETWORK` must be the existing Caddy gateway's external Docker network
 
 ### Existing Caddy gateway
 
@@ -127,6 +127,15 @@ npm run build
 
 ### FastAPI service
 
+Create the runtime environment file before installing the service. The default CORS
+origins are for local development; same-origin Nginx and Caddy deployments do not
+need an additional production origin.
+
+```bash
+cd /var/www/mb-quant
+cp -n .env.example .env
+```
+
 ```bash
 sudo cp deploy/mb-quant-api.service /etc/systemd/system/mb-quant-api.service
 sudo systemctl daemon-reload
@@ -194,6 +203,19 @@ To use another port, edit `deploy/mb-quant-standalone.service` and change `--por
 ## 4. Frontend and backend on separate ports
 
 If you want the frontend on one port and the API on another, set a public API URL before building the frontend.
+
+The API service must explicitly allow the browser origin. In `/var/www/mb-quant/.env`,
+set the frontend URL you will expose (replace the example host with the real domain or IP):
+
+```env
+MB_QUANT_ALLOWED_ORIGINS=http://SERVER_IP:4173
+```
+
+After changing this value, restart the API service:
+
+```bash
+sudo systemctl restart mb-quant-api
+```
 
 ```bash
 cd /var/www/mb-quant/frontend
