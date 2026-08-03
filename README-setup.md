@@ -44,18 +44,18 @@ gilgop.cloud {
 }
 ```
 
-Then reload the existing Caddy stack. Example, if the gateway is the Starter Kit project:
+Then reload the existing Caddy stack from that gateway's deployment directory:
 
 ```bash
-cd "/Users/sonmyeong-gwan/Desktop/One Dollar Project Starter Kit "
-docker compose --env-file infra/compose/env.production -f infra/compose/docker-compose.prod.yml exec caddy caddy reload --config /etc/caddy/Caddyfile
+cd /path/to/caddy-gateway
+docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
 ```
 
 Quick checks:
 
 ```bash
 docker compose -f deploy/docker-compose.shared-caddy.yml ps
-docker network inspect starterkit-prod_internal
+docker network inspect "$CADDY_SHARED_NETWORK"
 curl -I https://gilgop.cloud/healthz
 ```
 
@@ -75,6 +75,9 @@ Optional access control:
 ```bash
 export TELEGRAM_ALLOWED_CHAT_IDS="123456789,-1001234567890"
 ```
+
+Set `CADDY_SHARED_NETWORK` to the existing Caddy gateway's Docker network name
+before starting the compose stack.
 
 Bot commands:
 
