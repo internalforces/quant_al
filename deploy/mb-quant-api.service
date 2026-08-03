@@ -6,9 +6,9 @@ After=network.target
 User=www-data
 WorkingDirectory=/var/www/mb-quant
 EnvironmentFile=-/var/www/mb-quant/.env
-Environment=MB_QUANT_TRUST_PROXY_HEADERS=true
 # The in-process public API limiter requires a single worker.
-ExecStart=/var/www/mb-quant/.venv-web/bin/uvicorn backend.main:app --host 127.0.0.1 --port 8000 --workers 1
+# Set this after EnvironmentFile so the Nginx deployment cannot be overridden by .env.
+ExecStart=/usr/bin/env MB_QUANT_TRUST_PROXY_HEADERS=true /var/www/mb-quant/.venv-web/bin/uvicorn backend.main:app --host 127.0.0.1 --port 8000 --workers 1
 Restart=always
 RestartSec=5
 
