@@ -14,6 +14,10 @@ flowchart TB
     ANALYSIS --> YF["yfinance"]
     PRICE --> YF
     BOT --> ALIAS[("SQLite")]
+    SCHEDULE["GitHub Actions\n평일 23:00 KST"] --> REPORT["mb_main.py\n정기 신호 리포트"]
+    REPORT --> STRATEGY["Strategy Service"]
+    REPORT --> SMTP["SMTP"]
+    SMTP --> RECIPIENTS["수신자"]
 ```
 
 ## 책임 분리
@@ -26,6 +30,7 @@ flowchart TB
 | `backend/services/strategy.py` | 신호·포지션·수익률·성과 지표의 단일 구현 |
 | `backend/services/analysis.py` | 시세 다운로드와 API 응답용 변환 |
 | `telegram_bot/` | 조회 명령, 채팅별 별칭 관리, 응답 포맷 |
+| `mb_main.py`, `module/mail.py` | 최대 10개 종목의 신호·포지션·성과 요약 생성과 SMTP 정기 발송 |
 
 ## 주요 설계 판단
 
@@ -41,9 +46,9 @@ KRX 목록은 동기 호출이므로 `asyncio.to_thread`로 이벤트 루프 밖
 
 초기에는 웹 API와 정기 이메일 스크립트에 비슷한 계산이 각각 존재했습니다. 현재는 `strategy.py`가 공통 계산을 담당해 전략 규칙 수정 시 두 채널의 결과가 달라지는 위험을 줄였습니다.
 
-### 조회 채널은 웹과 Telegram으로 분리
+### 요청형 조회와 정기 알림을 분리
 
-웹은 차트와 비교 정보를, Telegram은 빠른 텍스트 조회를 담당합니다. Telegram 별칭은 채팅 단위 SQLite에 저장하여 그룹 간 데이터를 분리합니다.
+웹은 차트와 비교 정보를, Telegram은 빠른 텍스트 조회를 담당합니다. 반면 이메일은 GitHub Actions가 평일 23:00 KST에 실행하는 배치 리포트 채널로 분리해, 사용자의 요청 없이도 종목별 신호·포지션·성과 요약을 전달합니다. Telegram 별칭은 채팅 단위 SQLite에 저장하여 그룹 간 데이터를 분리합니다.
 
 ## 신뢰성 장치
 
@@ -52,6 +57,7 @@ KRX 목록은 동기 호출이므로 `asyncio.to_thread`로 이벤트 루프 밖
 - Docker 컨테이너 헬스체크와 재시작 정책
 - 전략 시점·종목 해석·API 오류를 검증하는 pytest
 - Pull Request에서 테스트, ESLint, 프로덕션 빌드를 실행하는 GitHub Actions
+- SMTP 전송은 587 포트의 STARTTLS와 465 포트의 SSL을 지원하며, 모든 수신자 전송이 실패하면 정기 워크플로를 실패 처리
 
 ## 트레이드오프
 
