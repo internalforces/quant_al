@@ -146,7 +146,7 @@ def _client_id(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-def _enforce_rate_limit(request: Request) -> None:
+async def _enforce_rate_limit(request: Request) -> None:
     retry_after = _rate_limiter.retry_after(_client_id(request))
     if retry_after is not None:
         raise HTTPException(
