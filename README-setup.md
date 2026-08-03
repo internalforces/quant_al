@@ -245,6 +245,9 @@ Example result:
 
 - Do not use the root `requirements.txt` for the web server. That file is for the GitHub Actions mail job.
 - The shared-Caddy Docker path is the recommended deployment when another stack already owns `80/443`.
+- The supplied systemd units run one Uvicorn worker so the in-process public API
+  rate limit is enforced consistently. Use a shared rate-limit store before
+  increasing the worker count.
 - If you expose FastAPI directly without nginx, make sure the server firewall allows the selected port.
 - If you use `8443` instead of `443`, users must include the port in the URL.
 - The existing nginx deployment keeps working exactly as before; 443 is not required by this repository.
