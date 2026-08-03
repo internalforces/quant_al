@@ -158,3 +158,17 @@ def test_api_rate_limit_returns_retry_header():
 
     assert limited.status_code == 429
     assert limited.headers["retry-after"]
+
+
+def test_rate_limiter_discards_inactive_client_state(monkeypatch):
+    now = 0.0
+    limiter = analysis_router._ClientRateLimiter(requests_per_minute=30)
+
+    monkeypatch.setattr(analysis_router.time, "monotonic", lambda: now)
+    assert limiter.retry_after("old-client") is None
+    assert "old-client" in limiter._requests
+
+    now = 60.0
+    assert limiter.retry_after("active-client") is None
+
+    assert "old-client" not in limiter._requests
