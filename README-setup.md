@@ -156,6 +156,12 @@ MB_QUANT_BOT_API_TOKEN=replace-with-a-distinct-random-secret
 TELEGRAM_ALLOWED_CHAT_IDS=
 ```
 
+토큰을 저장한 뒤 API가 같은 공유 비밀을 읽도록 재시작합니다.
+
+```bash
+sudo systemctl restart mb-quant-api
+```
+
 Then install the service:
 
 ```bash
