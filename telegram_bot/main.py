@@ -99,10 +99,25 @@ def _apply_alias_resolution(payload: dict[str, Any], entry: AliasEntry) -> dict[
     return payload
 
 
-async def _api_get(path: str, params: dict[str, str]) -> dict[str, Any]:
+def _bot_api_headers(update: Update) -> dict[str, str]:
+    chat_id = _chat_id(update)
+    bot_api_token = os.getenv("MB_QUANT_BOT_API_TOKEN", "")
+    if not chat_id or not bot_api_token:
+        return {}
+    return {
+        "X-MB-Quant-Bot-Token": bot_api_token,
+        "X-MB-Quant-Telegram-Chat-ID": chat_id,
+    }
+
+
+async def _api_get(
+    path: str,
+    params: dict[str, str],
+    headers: dict[str, str] | None = None,
+) -> dict[str, Any]:
     url = f"{API_BASE_URL}{path}"
     async with httpx.AsyncClient(timeout=API_TIMEOUT_SECONDS) as client:
-        resp = await client.get(url, params=params)
+        resp = await client.get(url, params=params, headers=headers)
 
     if resp.status_code >= 400:
         try:
@@ -295,7 +310,11 @@ async def add_alias(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     await chat.send_action(ChatAction.TYPING)
     try:
-        resolution = (await _api_get("/resolve", {"q": ticker_query}))["result"]
+        resolution = (
+            await _api_get(
+                "/resolve", {"q": ticker_query}, _bot_api_headers(update)
+            )
+        )["result"]
     except Exception as e:
         await message.reply_text(f"티커 확인 실패: {e}")
         return
@@ -402,7 +421,7 @@ async def price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     await chat.send_action(ChatAction.TYPING)
     try:
-        payload = await _api_get("/price", {"q": api_query})
+        payload = await _api_get("/price", {"q": api_query}, _bot_api_headers(update))
         if alias_entry:
             payload = _apply_alias_resolution(payload, alias_entry)
         await message.reply_text(_format_price_response(payload))
@@ -428,7 +447,7 @@ async def signal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     await chat.send_action(ChatAction.TYPING)
     try:
-        payload = await _api_get("/signal", {"q": api_query})
+        payload = await _api_get("/signal", {"q": api_query}, _bot_api_headers(update))
         if alias_entry:
             payload = _apply_alias_resolution(payload, alias_entry)
         await message.reply_text(_format_signal_response(payload))
@@ -440,6 +459,8 @@ def main() -> None:
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
         raise RuntimeError("TELEGRAM_BOT_TOKEN 환경변수가 필요합니다.")
+    if not os.getenv("MB_QUANT_BOT_API_TOKEN"):
+        raise RuntimeError("MB_QUANT_BOT_API_TOKEN 환경변수가 필요합니다.")
 
     app = Application.builder().token(token).concurrent_updates(True).build()
     app.add_handler(CommandHandler(["start", "help"], help_command))
