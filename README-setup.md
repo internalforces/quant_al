@@ -66,6 +66,7 @@ with BotFather, then run the compose profile:
 
 ```bash
 cd /var/www/mb-quant
+export CADDY_SHARED_NETWORK=<existing-caddy-network-name>
 export TELEGRAM_BOT_TOKEN="123456:replace-with-new-bot-token"
 export MB_QUANT_BOT_API_TOKEN="$(openssl rand -hex 32)"
 docker compose -f deploy/docker-compose.shared-caddy.yml --profile bot up -d --build
@@ -76,9 +77,6 @@ Optional access control:
 ```bash
 export TELEGRAM_ALLOWED_CHAT_IDS="123456789,-1001234567890"
 ```
-
-Set `CADDY_SHARED_NETWORK` to the existing Caddy gateway's Docker network name
-before starting the compose stack.
 
 Bot commands:
 
@@ -128,14 +126,17 @@ npm run build
 
 ### FastAPI service
 
-Create the runtime environment file before installing the service. The default CORS
-origins are for local development; same-origin Nginx and Caddy deployments do not
-need an additional production origin.
+Create the API-only runtime environment file before installing the service. The
+default CORS origins are for local development; same-origin Nginx and Caddy
+deployments do not need an additional production origin.
 
 ```bash
 cd /var/www/mb-quant
-cp -n .env.example .env
+cp -n deploy/mb-quant-api.env.example .env.api
 ```
+
+`mb-quant-api.service` reads only `.env.api`, keeping Telegram and mail
+credentials out of the public API process.
 
 ```bash
 sudo cp deploy/mb-quant-api.service /etc/systemd/system/mb-quant-api.service
@@ -145,7 +146,14 @@ sudo systemctl enable --now mb-quant-api
 
 ### Telegram bot service
 
-Set the new bot token in `/var/www/mb-quant/.env`:
+Create the bot environment file, then set the new bot token in
+`/var/www/mb-quant/.env`. Set the same `MB_QUANT_BOT_API_TOKEN` in `.env.api`
+so the API can authenticate and rate-limit bot requests per chat.
+
+```bash
+cd /var/www/mb-quant
+cp -n .env.example .env
+```
 
 ```env
 TELEGRAM_BOT_TOKEN=123456:replace-with-new-bot-token
@@ -212,7 +220,7 @@ To use another port, edit `deploy/mb-quant-standalone.service` and change `--por
 
 If you want the frontend on one port and the API on another, set a public API URL before building the frontend.
 
-The API service must explicitly allow the browser origin. In `/var/www/mb-quant/.env`,
+The API service must explicitly allow the browser origin. In `/var/www/mb-quant/.env.api`,
 set the frontend URL you will expose (replace the example host with the real domain or IP):
 
 ```env
