@@ -5,7 +5,7 @@ After=network.target
 [Service]
 User=www-data
 WorkingDirectory=/var/www/mb-quant
-EnvironmentFile=-/var/www/mb-quant/.env
+EnvironmentFile=-/var/www/mb-quant/.env.api
 # The in-process public API limiter requires a single worker.
 # The command itself applies this final override, after .env has been loaded.
 ExecStart=/usr/bin/env MB_QUANT_TRUST_PROXY_HEADERS=true /var/www/mb-quant/.venv-web/bin/uvicorn backend.main:app --host 127.0.0.1 --port 8000 --workers 1

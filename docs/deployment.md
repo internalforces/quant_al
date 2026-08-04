@@ -14,10 +14,12 @@ docker run --rm -p 8000:8000 mb-quant
 기존 Caddy 네트워크와 함께 실행하는 구성은 [`deploy/docker-compose.shared-caddy.yml`](../deploy/docker-compose.shared-caddy.yml)을 사용합니다.
 
 ```bash
+export CADDY_SHARED_NETWORK=<existing-caddy-network-name>
 docker compose -f deploy/docker-compose.shared-caddy.yml up -d --build
 ```
 
 이 구성은 외부 80/443 포트를 직접 점유하지 않습니다. 공개 HTTPS 라우팅은 공유 Caddy에 `deploy/Caddyfile.gilgop.cloud`의 사이트 블록을 추가해 처리합니다.
+`CADDY_SHARED_NETWORK`에는 기존 Caddy 게이트웨이가 사용하는 외부 Docker 네트워크 이름을 지정합니다.
 
 ## Telegram Bot
 
@@ -35,7 +37,9 @@ TELEGRAM_ALLOWED_CHAT_IDS=
 ```
 
 `MB_QUANT_BOT_API_TOKEN`은 봇 요청을 인증하고 채팅별 요청 제한을 적용하는 공유 비밀입니다.
-systemd에서는 API와 봇이 같은 `.env` 파일을 읽으며, Compose 구성은 두 컨테이너에 이 값을 전달합니다.
+systemd에서는 봇이 `.env`를, 공개 API가 `.env.api`를 읽습니다. `.env.api`는
+`deploy/mb-quant-api.env.example`에서 만들고, 두 파일의 `MB_QUANT_BOT_API_TOKEN`을
+같은 값으로 설정합니다. Compose 구성은 두 컨테이너에 이 값을 전달합니다.
 토큰은 Git에 커밋하지 않습니다. 런타임 SQLite 파일도 `.gitignore`에 포함되어 있습니다.
 
 ## 정기 이메일 작업
@@ -66,7 +70,9 @@ python mb_main.py
 
 ## 환경 변수 예시
 
-템플릿은 [`.env.example`](../.env.example)에 있습니다. 실제 `.env`는 개인 비밀값이므로 절대 커밋하지 않습니다.
+템플릿은 [`.env.example`](../.env.example)와
+[`deploy/mb-quant-api.env.example`](../deploy/mb-quant-api.env.example)에 있습니다.
+실제 `.env`와 `.env.api`는 개인 비밀값이므로 절대 커밋하지 않습니다.
 
 ## 배포 전 확인
 

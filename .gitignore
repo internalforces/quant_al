@@ -12,6 +12,7 @@ __pycache__/
 
 # 환경변수 파일
 .env
+.env.api
 
 # Runtime data
 data/*.sqlite3
