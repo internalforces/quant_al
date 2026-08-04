@@ -194,6 +194,63 @@ def test_api_rate_limit_returns_retry_header():
     assert limited.headers["retry-after"]
 
 
+def test_rate_limit_uses_authenticated_telegram_chat_identity(monkeypatch):
+    class RequestStub:
+        headers = {
+            "x-mb-quant-bot-token": "bot-api-secret",
+            "x-mb-quant-telegram-chat-id": "-1001234567890",
+        }
+
+        class client:
+            host = "127.0.0.1"
+
+    monkeypatch.setenv("MB_QUANT_BOT_API_TOKEN", "bot-api-secret")
+
+    assert analysis_router._client_id(RequestStub()) == "telegram:-1001234567890"
+
+
+def test_rate_limit_ignores_untrusted_telegram_identity(monkeypatch):
+    class RequestStub:
+        headers = {
+            "x-mb-quant-bot-token": "incorrect",
+            "x-mb-quant-telegram-chat-id": "123456789",
+        }
+
+        class client:
+            host = "127.0.0.1"
+
+    monkeypatch.setenv("MB_QUANT_BOT_API_TOKEN", "bot-api-secret")
+
+    assert analysis_router._client_id(RequestStub()) == "127.0.0.1"
+
+
+def test_direct_endpoints_allow_yahoo_index_and_futures_symbols(monkeypatch):
+    def fetch_price(ticker: str):
+        return {
+            "ticker": ticker,
+            "company": "Gold Futures",
+            "current_price": 100.0,
+            "previous_close": 99.0,
+            "open": 99.5,
+            "day_high": 101.0,
+            "day_low": 98.0,
+            "change": 1.0,
+            "change_percent": 1.01,
+            "currency": "USD",
+        }
+
+    monkeypatch.setattr(analysis_router, "get_stock_price", fetch_price)
+    monkeypatch.setattr(analysis_router, "analyze_ticker", lambda ticker: _analysis_result() | {"ticker": ticker})
+
+    futures = client.get("/api/price/GC=F")
+    index = client.get("/api/analyze/%5EGSPC")
+
+    assert futures.status_code == 200
+    assert futures.json()["ticker"] == "GC=F"
+    assert index.status_code == 200
+    assert index.json()["ticker"] == "^GSPC"
+
+
 def test_async_rate_limit_dependency_serializes_concurrent_requests():
     class RequestStub:
         headers: dict[str, str] = {}

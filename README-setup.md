@@ -67,6 +67,7 @@ with BotFather, then run the compose profile:
 ```bash
 cd /var/www/mb-quant
 export TELEGRAM_BOT_TOKEN="123456:replace-with-new-bot-token"
+export MB_QUANT_BOT_API_TOKEN="$(openssl rand -hex 32)"
 docker compose -f deploy/docker-compose.shared-caddy.yml --profile bot up -d --build
 ```
 
@@ -150,6 +151,7 @@ Set the new bot token in `/var/www/mb-quant/.env`:
 TELEGRAM_BOT_TOKEN=123456:replace-with-new-bot-token
 MB_QUANT_API_BASE_URL=http://127.0.0.1:8000/api
 TELEGRAM_ALIAS_DB_PATH=/var/www/mb-quant/data/telegram_aliases.sqlite3
+MB_QUANT_BOT_API_TOKEN=replace-with-a-distinct-random-secret
 # Optional: comma-separated Telegram chat IDs
 TELEGRAM_ALLOWED_CHAT_IDS=
 ```

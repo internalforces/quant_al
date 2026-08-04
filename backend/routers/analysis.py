@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import secrets
 import time
 from collections import deque
 from functools import partial
@@ -139,6 +140,17 @@ _analysis_cache = _TtlCache(ttl_seconds=900)
 
 
 def _client_id(request: Request) -> str:
+    bot_api_token = os.getenv("MB_QUANT_BOT_API_TOKEN", "")
+    supplied_token = request.headers.get("x-mb-quant-bot-token", "")
+    chat_id = request.headers.get("x-mb-quant-telegram-chat-id", "").strip()
+    if (
+        bot_api_token
+        and secrets.compare_digest(supplied_token, bot_api_token)
+        and chat_id.lstrip("-").isdigit()
+        and len(chat_id) <= 32
+    ):
+        return f"telegram:{chat_id}"
+
     if os.getenv("MB_QUANT_TRUST_PROXY_HEADERS", "").lower() == "true":
         forwarded_for = request.headers.get("x-forwarded-for", "")
         if forwarded_for:
@@ -223,7 +235,7 @@ async def price_by_query(
 
 @router.get("/price/{ticker}", response_model=StockPriceResponse)
 async def price(
-    ticker: str = Path(..., min_length=1, max_length=12, pattern=r"^[A-Za-z0-9.-]+$"),
+    ticker: str = Path(..., min_length=1, max_length=12, pattern=r"^[A-Za-z0-9.^=-]+$"),
     _: None = Depends(_enforce_rate_limit),
 ):
     loop = asyncio.get_running_loop()
@@ -268,7 +280,7 @@ async def signal_by_query(
 
 @router.get("/analyze/{ticker}", response_model=AnalysisResponse)
 async def analyze(
-    ticker: str = Path(..., min_length=1, max_length=12, pattern=r"^[A-Za-z0-9.-]+$"),
+    ticker: str = Path(..., min_length=1, max_length=12, pattern=r"^[A-Za-z0-9.^=-]+$"),
     _: None = Depends(_enforce_rate_limit),
 ):
     loop = asyncio.get_running_loop()
