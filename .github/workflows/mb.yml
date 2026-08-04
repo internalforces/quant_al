@@ -4,9 +4,13 @@ on:
     - cron: "00 14 * * 1-5"  # 평일 23:00 KST
   workflow_dispatch:        # 수동 실행도 가능
 
+permissions:
+  contents: read
+
 jobs:
   run:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python

@@ -20,14 +20,14 @@ This repository now includes:
 
 ```bash
 cd /var/www/mb-quant
+export CADDY_SHARED_NETWORK=<existing-caddy-network-name>
 docker compose -f deploy/docker-compose.shared-caddy.yml up -d --build
 ```
 
 Notes:
 
 - No host `80/443` ports are published from this compose file
-- The service joins the external Docker network `starterkit-prod_internal` by default
-- If your shared Caddy network name is different, set `CADDY_SHARED_NETWORK=<network-name>`
+- `CADDY_SHARED_NETWORK` must be the existing Caddy gateway's external Docker network
 
 ### Existing Caddy gateway
 
@@ -44,18 +44,18 @@ gilgop.cloud {
 }
 ```
 
-Then reload the existing Caddy stack. Example, if the gateway is the Starter Kit project:
+Then reload the existing Caddy stack from that gateway's deployment directory:
 
 ```bash
-cd "/Users/sonmyeong-gwan/Desktop/One Dollar Project Starter Kit "
-docker compose --env-file infra/compose/env.production -f infra/compose/docker-compose.prod.yml exec caddy caddy reload --config /etc/caddy/Caddyfile
+cd /path/to/caddy-gateway
+docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
 ```
 
 Quick checks:
 
 ```bash
 docker compose -f deploy/docker-compose.shared-caddy.yml ps
-docker network inspect starterkit-prod_internal
+docker network inspect "$CADDY_SHARED_NETWORK"
 curl -I https://gilgop.cloud/healthz
 ```
 
@@ -66,7 +66,9 @@ with BotFather, then run the compose profile:
 
 ```bash
 cd /var/www/mb-quant
+export CADDY_SHARED_NETWORK=<existing-caddy-network-name>
 export TELEGRAM_BOT_TOKEN="123456:replace-with-new-bot-token"
+export MB_QUANT_BOT_API_TOKEN="$(openssl rand -hex 32)"
 docker compose -f deploy/docker-compose.shared-caddy.yml --profile bot up -d --build
 ```
 
@@ -124,6 +126,18 @@ npm run build
 
 ### FastAPI service
 
+Create the API-only runtime environment file before installing the service. The
+default CORS origins are for local development; same-origin Nginx and Caddy
+deployments do not need an additional production origin.
+
+```bash
+cd /var/www/mb-quant
+cp -n deploy/mb-quant-api.env.example .env.api
+```
+
+`mb-quant-api.service` reads only `.env.api`, keeping Telegram and mail
+credentials out of the public API process.
+
 ```bash
 sudo cp deploy/mb-quant-api.service /etc/systemd/system/mb-quant-api.service
 sudo systemctl daemon-reload
@@ -132,14 +146,28 @@ sudo systemctl enable --now mb-quant-api
 
 ### Telegram bot service
 
-Set the new bot token in `/var/www/mb-quant/.env`:
+Create the bot environment file, then set the new bot token in
+`/var/www/mb-quant/.env`. Set the same `MB_QUANT_BOT_API_TOKEN` in `.env.api`
+so the API can authenticate and rate-limit bot requests per chat.
+
+```bash
+cd /var/www/mb-quant
+cp -n .env.example .env
+```
 
 ```env
 TELEGRAM_BOT_TOKEN=123456:replace-with-new-bot-token
 MB_QUANT_API_BASE_URL=http://127.0.0.1:8000/api
 TELEGRAM_ALIAS_DB_PATH=/var/www/mb-quant/data/telegram_aliases.sqlite3
+MB_QUANT_BOT_API_TOKEN=replace-with-a-distinct-random-secret
 # Optional: comma-separated Telegram chat IDs
 TELEGRAM_ALLOWED_CHAT_IDS=
+```
+
+토큰을 저장한 뒤 API가 같은 공유 비밀을 읽도록 재시작합니다.
+
+```bash
+sudo systemctl restart mb-quant-api
 ```
 
 Then install the service:
@@ -192,6 +220,19 @@ To use another port, edit `deploy/mb-quant-standalone.service` and change `--por
 
 If you want the frontend on one port and the API on another, set a public API URL before building the frontend.
 
+The API service must explicitly allow the browser origin. In `/var/www/mb-quant/.env.api`,
+set the frontend URL you will expose (replace the example host with the real domain or IP):
+
+```env
+MB_QUANT_ALLOWED_ORIGINS=http://SERVER_IP:4173
+```
+
+After changing this value, restart the API service:
+
+```bash
+sudo systemctl restart mb-quant-api
+```
+
 ```bash
 cd /var/www/mb-quant/frontend
 cp .env.example .env
@@ -220,6 +261,9 @@ Example result:
 
 - Do not use the root `requirements.txt` for the web server. That file is for the GitHub Actions mail job.
 - The shared-Caddy Docker path is the recommended deployment when another stack already owns `80/443`.
+- The supplied systemd units run one Uvicorn worker so the in-process public API
+  rate limit is enforced consistently. Use a shared rate-limit store before
+  increasing the worker count.
 - If you expose FastAPI directly without nginx, make sure the server firewall allows the selected port.
 - If you use `8443` instead of `443`, users must include the port in the URL.
 - The existing nginx deployment keeps working exactly as before; 443 is not required by this repository.

@@ -6,6 +6,11 @@ services:
     restart: unless-stopped
     expose:
       - "8000"
+    environment:
+      MB_QUANT_TRUST_PROXY_HEADERS: "true"
+      MB_QUANT_ALLOWED_ORIGINS: ${MB_QUANT_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      MB_QUANT_REQUESTS_PER_MINUTE: ${MB_QUANT_REQUESTS_PER_MINUTE:-30}
+      MB_QUANT_BOT_API_TOKEN: ${MB_QUANT_BOT_API_TOKEN:-}
     healthcheck:
       test:
         [
@@ -34,6 +39,7 @@ services:
       TELEGRAM_ALIAS_DB_PATH: /app/data/telegram_aliases.sqlite3
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_ALLOWED_CHAT_IDS: ${TELEGRAM_ALLOWED_CHAT_IDS:-}
+      MB_QUANT_BOT_API_TOKEN: ${MB_QUANT_BOT_API_TOKEN:-}
     depends_on:
       mb-quant-web:
         condition: service_healthy
@@ -48,4 +54,4 @@ volumes:
 networks:
   caddy_shared:
     external: true
-    name: ${CADDY_SHARED_NETWORK:-starterkit-prod_internal}
+    name: ${CADDY_SHARED_NETWORK:?Set CADDY_SHARED_NETWORK to the shared Caddy network name}
