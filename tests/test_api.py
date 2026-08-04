@@ -160,6 +160,37 @@ def test_price_endpoint_coalesces_concurrent_cache_misses(monkeypatch):
     assert calls == 1
 
 
+def test_ttl_cache_discards_completed_load_after_waiter_cancellation():
+    cache = analysis_router._TtlCache(ttl_seconds=60)
+
+    async def exercise():
+        loader_started = asyncio.Event()
+        allow_loader_to_finish = asyncio.Event()
+
+        async def loader():
+            loader_started.set()
+            await allow_loader_to_finish.wait()
+            return {"value": "loaded"}
+
+        waiter = asyncio.create_task(cache.get_or_load("AAPL", loader))
+        await loader_started.wait()
+        waiter.cancel()
+        try:
+            await waiter
+        except asyncio.CancelledError:
+            pass
+        else:
+            raise AssertionError("The cancelled caller should not receive a result")
+
+        allow_loader_to_finish.set()
+        await cache._inflight["AAPL"]
+        await asyncio.sleep(0)
+
+    asyncio.run(exercise())
+
+    assert "AAPL" not in cache._inflight
+
+
 def test_cors_allows_only_configured_local_origin():
     allowed = client.options(
         "/api/health",
