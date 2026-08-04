@@ -91,6 +91,10 @@ class _TtlCache:
         self._values[key] = (expires_at, value)
         heappush(self._expiry, (expires_at, key))
 
+    def _discard_inflight_task(self, key: str, task: asyncio.Task) -> None:
+        if self._inflight.get(key) is task:
+            self._inflight.pop(key, None)
+
     async def get_or_load(
         self,
         key: str,
@@ -104,11 +108,10 @@ class _TtlCache:
         if task is None:
             task = asyncio.create_task(self._load_and_cache(key, loader))
             self._inflight[key] = task
-        try:
-            return await asyncio.shield(task)
-        finally:
-            if task.done() and self._inflight.get(key) is task:
-                self._inflight.pop(key, None)
+            task.add_done_callback(
+                lambda completed_task: self._discard_inflight_task(key, completed_task)
+            )
+        return await asyncio.shield(task)
 
     async def _load_and_cache(
         self,

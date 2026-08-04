@@ -27,10 +27,15 @@ Bot은 API와 분리된 프로세스입니다. 다음 환경 변수를 설정한
 TELEGRAM_BOT_TOKEN=replace-with-bot-token
 MB_QUANT_API_BASE_URL=http://127.0.0.1:8000/api
 TELEGRAM_ALIAS_DB_PATH=data/telegram_aliases.sqlite3
+# Generate with: openssl rand -hex 32
+# The API and bot must use the same value.
+MB_QUANT_BOT_API_TOKEN=replace-with-a-distinct-random-secret
 # 선택 사항: 허용할 Telegram chat_id를 쉼표로 구분
 TELEGRAM_ALLOWED_CHAT_IDS=
 ```
 
+`MB_QUANT_BOT_API_TOKEN`은 봇 요청을 인증하고 채팅별 요청 제한을 적용하는 공유 비밀입니다.
+systemd에서는 API와 봇이 같은 `.env` 파일을 읽으며, Compose 구성은 두 컨테이너에 이 값을 전달합니다.
 토큰은 Git에 커밋하지 않습니다. 런타임 SQLite 파일도 `.gitignore`에 포함되어 있습니다.
 
 ## 정기 이메일 작업
