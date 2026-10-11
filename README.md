@@ -59,6 +59,10 @@ flowchart LR
     SMTP --> M["수신자"]
 ```
 
+컴포넌트와 파일별 연결 관계는 아래 다이어그램에서 확인할 수 있습니다. 설계 판단은 [아키텍처 문서](docs/architecture.md)에 정리했습니다.
+
+![웹 대시보드, Telegram Bot, API·분석 서비스, 정기 이메일 리포트의 상세 아키텍처](docs/images/architecture.png)
+
 ## 빠른 시작
 
 사전 요구 사항: Python 3.11+, Node.js 22.12+, npm

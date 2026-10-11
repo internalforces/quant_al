@@ -20,6 +20,12 @@ flowchart TB
     SMTP --> RECIPIENTS["수신자"]
 ```
 
+## 상세 아키텍처
+
+웹 대시보드, Telegram Bot, API·분석 서비스, 정기 이메일 리포트의 컴포넌트와 파일별 연결 관계입니다.
+
+![MB Quant 상세 아키텍처 다이어그램](images/architecture.png)
+
 ## 책임 분리
 
 | 구성 요소 | 책임 |
