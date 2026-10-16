@@ -5,26 +5,97 @@
 ```mermaid
 flowchart TB
     FE["React + Plotly"] -->|"/api/search, /api/signal, /api/price"| API["FastAPI"]
-    BOT["Telegram Bot"] -->|"HTTP"| API
+    BOT["Telegram Bot"] -->|"/api/price, /api/signal, /api/resolve"| API
     API --> RES["Ticker Resolver"]
     API --> ANALYSIS["Analysis Service"]
     API --> PRICE["Price Service"]
     RES --> KRX["KRX 기업 목록"]
     RES --> YSEARCH["Yahoo Finance Search"]
     ANALYSIS --> YF["yfinance"]
+    ANALYSIS --> STRATEGY["Strategy Service"]
     PRICE --> YF
     BOT --> ALIAS[("SQLite")]
     SCHEDULE["GitHub Actions\n평일 23:00 KST"] --> REPORT["mb_main.py\n정기 신호 리포트"]
-    REPORT --> STRATEGY["Strategy Service"]
+    REPORT --> YF
+    REPORT --> STRATEGY
     REPORT --> SMTP["SMTP"]
     SMTP --> RECIPIENTS["수신자"]
 ```
 
 ## 상세 아키텍처
 
-웹 대시보드, Telegram Bot, API·분석 서비스, 정기 이메일 리포트의 컴포넌트와 파일별 연결 관계입니다.
+웹 대시보드, Telegram Bot, API·분석 서비스, 정기 이메일 리포트의 컴포넌트와 파일별 연결 관계입니다. 화살표는 호출·렌더링·외부 데이터 조회의 방향을 나타냅니다. 파일 경로는 저장소 루트 기준입니다.
 
-![MB Quant 상세 아키텍처 다이어그램](images/architecture.png)
+큰 PNG를 페이지마다 디코딩하지 않도록 Mermaid로 표시합니다. [기존 PNG 원본](images/architecture.png)은 참고용으로 보존하며, 원본에서 누락된 의존성은 아래 다이어그램과 텍스트 설명에 반영했습니다.
+
+### 웹 대시보드
+
+```mermaid
+flowchart TB
+    USER["사용자"] --> APP["frontend/src/App.jsx"]
+    APP -->|"렌더링"| SEARCH["components/SearchBar.jsx"]
+    APP -->|"렌더링"| RESULT["components/AnalysisResult.jsx"]
+    APP -->|"렌더링·분석 데이터 전달"| STOCK["components/StockPrice.jsx"]
+    RESULT --> STATS["components/StatsTable.jsx"]
+    RESULT --> SIGNAL["components/SignalCard.jsx"]
+    RESULT --> PRICE_CHART["components/PriceChart.jsx"]
+    RESULT --> RETURN_CHART["components/ReturnChart.jsx"]
+    SEARCH -->|"검색"| CLIENT["frontend/src/api/client.js"]
+    APP -->|"분석·가격 요청"| CLIENT
+    CLIENT -->|"/api/search, /api/signal, /api/price"| API["backend/routers/analysis.py"]
+```
+
+`components/`는 `frontend/src/components/`를 뜻합니다. `App.jsx`는 검색 결과 선택 시 API 클라이언트로 분석과 가격을 요청하고 결과를 각 뷰에 전달합니다. `AnalysisResult.jsx`는 통계 표, 신호 카드, 가격 차트, 수익률 차트를 렌더링합니다. `StockPrice.jsx`는 가격과 분석 데이터를 함께 사용해 가격·추가 지표를 표시합니다.
+
+### Telegram Bot
+
+```mermaid
+flowchart TB
+    USER["Telegram 사용자"] -->|"명령"| BOT["telegram_bot/main.py"]
+    BOT -->|"/price, /signal 명령 → /api/price, /api/signal"| API["backend/routers/analysis.py"]
+    BOT -->|"/add 명령 → /api/resolve"| API
+    BOT -->|"별칭 조회·등록·삭제"| ALIASES["telegram_bot/aliases.py"]
+    ALIASES -->|"채팅별 읽기·쓰기"| DB[("SQLite 별칭 저장소")]
+```
+
+`main.py`는 `/price`, `/signal` 요청 전에 채팅별 별칭을 조회하고, 있으면 저장된 티커로 API를 호출합니다. `/add`는 먼저 `/api/resolve`로 티커와 시장을 확인한 뒤 `aliases.py`의 `AliasStore`를 통해 SQLite에 저장합니다. 따라서 API를 사용할 수 없으면 별칭 등록도 실패하며 저장하지 않습니다. `/list`, `/remove`는 로컬 별칭 저장소를 사용합니다.
+
+### API·분석 서비스
+
+```mermaid
+flowchart TB
+    MAIN["backend/main.py"] -->|"라우터 등록"| API["backend/routers/analysis.py"]
+    API -->|"응답 스키마"| MODELS["backend/schemas/models.py"]
+    API -->|"검색·종목 해석"| RESOLVER["backend/services/ticker_resolver.py"]
+    API -->|"가격 조회"| PRICE["backend/services/price.py"]
+    API -->|"신호 분석"| ANALYSIS["backend/services/analysis.py"]
+    RESOLVER -->|"국내 상장 목록 조회"| KRX["KRX 기업 목록"]
+    RESOLVER -->|"후보 검색"| SEARCH["backend/services/ticker_search.py"]
+    SEARCH -->|"HTTP 검색"| YSEARCH["Yahoo Finance Search"]
+    PRICE -->|"yf.Ticker: 가격·기업 정보"| YF["Yahoo Finance 시세 데이터 / yfinance"]
+    ANALYSIS -->|"yf.download, yf.Ticker"| YF
+    ANALYSIS -->|"신호·포지션·성과 계산"| STRATEGY["backend/services/strategy.py"]
+```
+
+`backend/main.py`가 API 라우터를 등록하고, `backend/routers/analysis.py`가 종목 해석·가격·분석 서비스를 호출하며 `backend/schemas/models.py`의 응답 모델을 적용합니다. `ticker_resolver.py`는 KRX 기업 목록과 `ticker_search.py`의 Yahoo 검색을 사용합니다.
+
+`price.py`는 `yf.Ticker`로 가격·기업 정보를 조회합니다. API용 `analysis.py`는 `yf.download`로 시세를 내려받고 `yf.Ticker`로 기업명을 조회한 뒤, 공통 `strategy.py`의 `build_strategy_frame`과 `evaluate_strategy`로 계산합니다.
+
+### 정기 이메일 리포트
+
+```mermaid
+flowchart TB
+    SCHEDULE[".github/workflows/mb.yml<br/>평일 23:00 KST / 수동 실행"] --> REPORT["mb_main.py"]
+    REPORT -->|"yf.download, yf.Ticker"| YF["Yahoo Finance 시세 데이터 / yfinance"]
+    REPORT -->|"신호·포지션·성과 계산"| STRATEGY["backend/services/strategy.py"]
+    REPORT -->|"리포트 본문 전달"| MAIL["module/mail.py"]
+    MAIL -->|"메일 전송"| SMTP["SMTP 서비스"]
+    SMTP --> RECIPIENT["이메일 수신자"]
+```
+
+`mb_main.py`도 직접 `yf.download`와 `yf.Ticker`로 데이터를 조회하고 공통 전략 함수를 호출합니다. API 분석과 정기 리포트 모두 Yahoo Finance에 직접 의존하며, `strategy.py` 자체는 시세를 조회하지 않습니다.
+
+정기 워크플로는 `mb_main.py`를 실행합니다. 이 스크립트는 API를 거치지 않고 종목별 리포트를 만들고 `module/mail.py`의 `send_email`을 호출합니다. 메일 모듈은 SMTP 서비스를 통해 수신자에게 전달합니다.
 
 ## 책임 분리
 

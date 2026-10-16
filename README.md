@@ -46,7 +46,7 @@ flowchart LR
     U["사용자"] --> W["React 대시보드"]
     U --> T["Telegram Bot"]
     W --> A["FastAPI /api"]
-    T --> A
+    T -->|"/price, /signal, /resolve"| A
     A --> R["종목 해석"]
     R --> K["KRX 기업 목록"]
     R --> YS["Yahoo 종목 검색"]
@@ -54,14 +54,14 @@ flowchart LR
     P --> YF["yfinance"]
     T --> DB[("SQLite 별칭 저장소")]
     GA["GitHub Actions\n평일 23:00 KST"] --> JOB["mb_main.py\n정기 신호 리포트"]
-    JOB --> P
+    JOB --> YF
+    JOB --> STRATEGY["공통 전략 계산\nstrategy.py"]
+    P --> STRATEGY
     JOB --> SMTP["SMTP"]
     SMTP --> M["수신자"]
 ```
 
-컴포넌트와 파일별 연결 관계는 아래 다이어그램에서 확인할 수 있습니다. 설계 판단은 [아키텍처 문서](docs/architecture.md)에 정리했습니다.
-
-![웹 대시보드, Telegram Bot, API·분석 서비스, 정기 이메일 리포트의 상세 아키텍처](docs/images/architecture.png)
+컴포넌트와 파일별 연결 관계는 [상세 아키텍처 다이어그램과 텍스트 설명](docs/architecture.md#상세-아키텍처)에서 확인할 수 있습니다. 설계 판단도 같은 문서에 정리했습니다.
 
 ## 빠른 시작
 
